@@ -88,7 +88,10 @@ export async function getRecentMessages(sessionId: string, limit = 20) {
 export async function saveAgentState(key: string, value: any) {
   const { data, error } = await supabase
     .from('agent_state')
-    .upsert({ key, value, updated_at: new Date().toISOString() })
+    .upsert(
+      { key, value, updated_at: new Date().toISOString() },
+      { onConflict: 'key' }
+    )
     .select()
     .single();
 
