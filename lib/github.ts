@@ -6,14 +6,26 @@ const githubToken = process.env.GITHUB_TOKEN || 'placeholder-token';
 
 export const octokit = new Octokit({
   auth: githubToken,
+  // Añadir un timeout y reintentos básicos si es necesario
+  request: {
+    timeout: 10000,
+  }
 });
 
 // Variables de configuración del repositorio
 export const GITHUB_OWNER = process.env.GITHUB_OWNER || '';
 export const GITHUB_REPO = process.env.GITHUB_REPO || '';
 
-if (!GITHUB_OWNER || !GITHUB_REPO) {
-  console.warn('Warning: GITHUB_OWNER or GITHUB_REPO not configured');
+/**
+ * Valida la configuración de GitHub antes de realizar operaciones
+ */
+function validateConfig() {
+  if (githubToken === 'placeholder-token' || !process.env.GITHUB_TOKEN) {
+    throw new Error('GITHUB_TOKEN no está configurado en las variables de entorno de Vercel.');
+  }
+  if (!GITHUB_OWNER || !GITHUB_REPO) {
+    throw new Error('GITHUB_OWNER o GITHUB_REPO no están configurados.');
+  }
 }
 
 // Tipos para las operaciones de GitHub
@@ -42,6 +54,7 @@ export async function getFileContent(
   ref?: string
 ): Promise<FileContent | null> {
   try {
+    validateConfig();
     const { data } = await octokit.repos.getContent({
       owner: GITHUB_OWNER,
       repo: GITHUB_REPO,
@@ -76,6 +89,7 @@ export async function createOrUpdateFile(
   branch: string,
   sha?: string
 ) {
+  validateConfig();
   const { data } = await octokit.repos.createOrUpdateFileContents({
     owner: GITHUB_OWNER,
     repo: GITHUB_REPO,
@@ -94,6 +108,7 @@ export async function createOrUpdateFile(
  */
 export async function getBranch(branch: string): Promise<BranchInfo | null> {
   try {
+    validateConfig();
     const { data } = await octokit.repos.getBranch({
       owner: GITHUB_OWNER,
       repo: GITHUB_REPO,
@@ -148,6 +163,7 @@ export async function createPullRequest(
   base: string = 'main',
   body?: string
 ): Promise<PullRequestInfo> {
+  validateConfig();
   const { data } = await octokit.pulls.create({
     owner: GITHUB_OWNER,
     repo: GITHUB_REPO,
@@ -168,6 +184,7 @@ export async function createPullRequest(
  * Lista los archivos modificados en una rama comparada con otra
  */
 export async function compareCommits(base: string, head: string) {
+  validateConfig();
   const { data } = await octokit.repos.compareCommits({
     owner: GITHUB_OWNER,
     repo: GITHUB_REPO,
@@ -182,6 +199,7 @@ export async function compareCommits(base: string, head: string) {
  * Crea un issue en el repositorio
  */
 export async function createIssue(title: string, body?: string, labels?: string[]) {
+  validateConfig();
   const { data } = await octokit.issues.create({
     owner: GITHUB_OWNER,
     repo: GITHUB_REPO,
@@ -197,6 +215,7 @@ export async function createIssue(title: string, body?: string, labels?: string[
  * Lista los issues abiertos del repositorio
  */
 export async function listOpenIssues() {
+  validateConfig();
   const { data } = await octokit.issues.listForRepo({
     owner: GITHUB_OWNER,
     repo: GITHUB_REPO,
@@ -210,6 +229,7 @@ export async function listOpenIssues() {
  * Obtiene el contenido de múltiples archivos de un directorio
  */
 export async function getDirectoryContents(path: string, ref?: string) {
+  validateConfig();
   const { data } = await octokit.repos.getContent({
     owner: GITHUB_OWNER,
     repo: GITHUB_REPO,
