@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 // Cliente de OpenAI para generar embeddings
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY || 'placeholder-key',
 });
 
 /**

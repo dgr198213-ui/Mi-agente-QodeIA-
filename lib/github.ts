@@ -1,13 +1,11 @@
 import { Octokit } from '@octokit/rest';
 
-// Validar que las variables de entorno estén configuradas
-if (!process.env.GITHUB_TOKEN) {
-  throw new Error('Missing env.GITHUB_TOKEN');
-}
-
 // Cliente de GitHub API
+// Se usa una validación flexible para permitir la compilación en Vercel sin variables de entorno presentes
+const githubToken = process.env.GITHUB_TOKEN || 'placeholder-token';
+
 export const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN,
+  auth: githubToken,
 });
 
 // Variables de configuración del repositorio

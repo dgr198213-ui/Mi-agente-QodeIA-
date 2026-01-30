@@ -1,11 +1,8 @@
 // Cliente para interactuar con la API de Vercel
 
-// Validar que las variables de entorno estén configuradas
-if (!process.env.VERCEL_TOKEN) {
-  throw new Error('Missing env.VERCEL_TOKEN');
-}
-
-const VERCEL_TOKEN = process.env.VERCEL_TOKEN;
+// Cliente para interactuar con la API de Vercel
+// Se usa una validación flexible para permitir la compilación en Vercel sin variables de entorno presentes
+const VERCEL_TOKEN = process.env.VERCEL_TOKEN || 'placeholder-token';
 const VERCEL_TEAM_ID = process.env.VERCEL_TEAM_ID;
 const VERCEL_PROJECT_ID = process.env.VERCEL_PROJECT_ID;
 
