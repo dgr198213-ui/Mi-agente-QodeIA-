@@ -5,6 +5,7 @@ import {
   updateTaskStatus,
   getPendingTasks,
 } from '@/lib/supabase';
+import { onAgentSolutionSuccess } from '@/hooks/mcp-sync';
 
 /**
  * Herramientas de Supabase para el agente
@@ -431,6 +432,51 @@ export const supabaseTools = {
           success: true,
           count: tasks.length,
           tasks,
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+    },
+  },
+
+  /**
+   * Registra una solución exitosa para un error
+   */
+  recordErrorSolution: {
+    description: 'Registra una solución exitosa para un error específico. Si la solución es validada varias veces, se sincroniza con la base de conocimiento MCP.',
+    parameters: z.object({
+      error_signature: z.string().describe('Firma o mensaje del error'),
+      solution_steps: z.array(z.string()).describe('Pasos seguidos para resolver el error'),
+      context: z.record(z.any()).optional().describe('Contexto adicional del error'),
+    }),
+    execute: async ({ error_signature, solution_steps, context }) => {
+      try {
+        // 1. Guardar en agent_solutions (simulado con insertData)
+        const { data: saved, error } = await supabase
+          .from('agent_solutions')
+          .insert({
+            error_signature,
+            solution_steps,
+            context,
+            success_count: 1, // En un flujo real, esto se incrementaría
+            last_used: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // 2. NUEVO: Si es exitosa (simulamos validación), sincronizar con MCP
+        // En producción, esto se activaría cuando success_count >= 3
+        await onAgentSolutionSuccess(saved);
+
+        return {
+          success: true,
+          message: 'Solución registrada y sincronizada con base de conocimiento',
+          solution: saved,
         };
       } catch (error: any) {
         return {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAgent } from '@/agent/core/agent';
+import { createAgent } from '@/agent/core/agent_with_mcp';
 import { createClient } from '@supabase/supabase-js';
 
 // Crear cliente de Supabase con service role para acceso completo
@@ -105,14 +105,11 @@ export async function POST(request: NextRequest) {
       projectContext = await getProjectContext(projectId, user.id);
     }
 
-    // Crear agente con configuración
+    // Crear agente con configuración MCP habilitada
     const agent = await createAgent({
       sessionId: sessionId || user.id,
-      model: 'gpt-4.1-mini',
-      temperature: 0.7,
-      maxSteps: 10,
-      enableMemory: true,
-      enableTools: true
+      userId: user.id,
+      enableMCP: true
     });
 
     // Construir mensaje con contexto del proyecto si está disponible

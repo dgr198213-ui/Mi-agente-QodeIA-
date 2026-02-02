@@ -13,7 +13,8 @@ Este es un agente autónomo construido con **Next.js**, **Vercel AI SDK**, **Sup
   - Sistema de gestión de tareas en la tabla `tasks`.
 - **Integración con GitHub**: Gestión de repositorios, incluyendo lectura de archivos, creación de ramas, commits y Pull Requests.
 - **Integración con Vercel**: Gestión de despliegues, consulta de estado de proyectos y más.
-- **Interfaz de Usuario**: Componente de chat en React para interactuar con el agente.
+- **Integración MCP (Model Context Protocol)**: Conexión con NotebookLM para una base de conocimiento técnica verificable.
+- **Interfaz de Usuario**: Componente de chat en React y **Panel de Administración MCP** para gestión web.
 
 ## Prerrequisitos
 
@@ -78,6 +79,8 @@ VERCEL_PROJECT_ID=your_project_id
 -   `/agent/memory/`: Sistema de memoria híbrida (corta y larga duración con vectores).
 -   `/lib/`: Clientes para los servicios de Supabase, GitHub y Vercel.
 -   `/components/Chat.tsx`: Interfaz de usuario para interactuar con el agente.
+-   `/app/admin/mcp/page.tsx`: Panel de administración web para MCP.
+-   `/app/api/mcp/`: Endpoints de API para la gestión de MCP y OAuth.
 -   `/supabase_schema.sql`: Esquema SQL para la base de datos.
 
 ## Herramientas Incluidas
@@ -109,3 +112,24 @@ VERCEL_PROJECT_ID=your_project_id
 -   `listDeployments`: Lista los despliegues de un proyecto.
 -   `getDeploymentStatus`: Obtiene el estado de un despliegue específico.
 -   `cancelDeployment`: Cancela un despliegue en progreso.
+
+### MCP & NotebookLM
+
+-   `queryDocumentation`: Consulta la documentación técnica en NotebookLM.
+-   `analyzeImpact`: Analiza el impacto de cambios en el ecosistema.
+-   `syncSolutionToKnowledgeBase`: Sincroniza soluciones validadas con la base de conocimiento.
+-   `verifyArchitecturalDecision`: Verifica decisiones técnicas contra la arquitectura Howard OS.
+
+## 🔌 Integración MCP (Model Context Protocol)
+
+Este repositorio ahora incluye una integración completa con **NotebookLM** a través de MCP, permitiendo al agente consultar documentación técnica verificable y sincronizar soluciones.
+
+### Componentes de MCP
+- **Cliente MCP**: `/mcp/client.ts` - Gestiona la conexión con los servidores de NotebookLM.
+- **Herramientas del Agente**: `/agent/tools/mcp_notebooklm.ts` - Define las capacidades de consulta y análisis.
+- **Endpoints de API**: `/app/api/mcp/` - Soporte para configuración web y OAuth.
+
+### Configuración Rápida
+1. Configura las variables de entorno de Google OAuth.
+2. Accede al panel de administración en `/admin/mcp`.
+3. Vincula tus cuadernos de NotebookLM.
