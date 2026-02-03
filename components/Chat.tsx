@@ -130,13 +130,13 @@ export default function Chat() {
           <div className="flex gap-2">
             <button
               onClick={() => setShowSteps(!showSteps)}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               {showSteps ? 'Ocultar' : 'Ver'} Pasos
             </button>
             <button
               onClick={clearChat}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             >
               Limpiar Chat
             </button>
@@ -183,7 +183,7 @@ export default function Chat() {
                 <div
                   className={`max-w-[80%] rounded-lg p-4 ${
                     message.role === 'user'
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-blue-600 text-white'
                       : 'bg-white text-gray-900 border border-gray-200'
                   }`}
                 >
@@ -212,7 +212,7 @@ export default function Chat() {
               <div className="flex justify-start">
                 <div className="bg-white border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                     <span className="text-gray-600">
                       El agente está pensando...
                     </span>
@@ -239,7 +239,7 @@ export default function Chat() {
                   {currentSteps.map((step, index) => (
                     <div
                       key={index}
-                      className="border-l-2 border-blue-500 pl-3 py-1"
+                      className="border-l-2 border-blue-600 pl-3 py-1"
                     >
                       <div className="flex items-start gap-2">
                         <span className="text-lg">
@@ -276,12 +276,12 @@ export default function Chat() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Escribe tu mensaje aquí..."
               disabled={loading}
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed text-gray-900"
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-gray-100 disabled:cursor-not-allowed text-gray-900"
             />
             <button
               type="submit"
               disabled={loading || !input.trim()}
-              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-semibold"
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-semibold"
             >
               {loading ? 'Enviando...' : 'Enviar'}
             </button>
