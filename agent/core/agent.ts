@@ -1,26 +1,24 @@
 /**
  * Integración MCP en el Core del Agente QodeIA
- * 
+ *
  * Este archivo incorpora las herramientas MCP sin romper la funcionalidad existente.
  */
 
-import { streamText } from 'ai';
+import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { getMCPClient } from '@/mcp/client';
-import { 
-  queryDocumentation, 
+import {
+  queryDocumentation,
   analyzeImpact,
   syncSolutionToKnowledgeBase,
-  verifyArchitecturalDecision 
+  verifyArchitecturalDecision
 } from '@/agent/tools/mcp_notebooklm';
 import { supabaseTools } from '@/agent/tools/supabase';
+import { githubTools } from '@/agent/tools/github';
+import { vercelTools } from '@/agent/tools/vercel';
 import { inferContext } from './context';
 import { recordTransition, ensureToolNode } from './governance';
 import { supabase } from '@/lib/supabase';
-
-// Importar herramientas existentes (asumiendo que existen en el repo)
-const githubTools = {}; 
-const vercelTools = {};
 
 /**
  * Sistema de prompts con reglas MCP integradas
@@ -35,7 +33,7 @@ Eres QodeIA, un agente autónomo de desarrollo de software con acceso a:
 ## NUEVAS CAPACIDADES MCP
 
 ### 1. Consulta de Documentación (OBLIGATORIO)
-**REGLA DE ORO**: Antes de modificar esquemas de DB, interfaces compartidas o 
+**REGLA DE ORO**: Antes de modificar esquemas de DB, interfaces compartidas o
 proponer arquitecturas, DEBES consultar queryDocumentation.
 
 ### 2. Análisis de Impacto (REQUERIDO para cambios cross-repo)
@@ -45,7 +43,7 @@ proponer arquitecturas, DEBES consultar queryDocumentation.
 **USO**: Antes de proponer nuevas integraciones o cambios estructurales.
 
 ### 4. Sincronización de Soluciones (AUTOMÁTICO)
-**TRIGGER**: Después de resolver errores exitosamente o cuando el usuario acepta 
+**TRIGGER**: Después de resolver errores exitosamente o cuando el usuario acepta
 una propuesta del Shadow Workspace.
 
 ## REGLAS EXISTENTES (MANTENER)
@@ -115,7 +113,7 @@ export async function createAgent(options: {
 
       let lastNodeKey = 'user_input';
 
-      return streamText({
+      const result = await generateText({
         model: openai('gpt-4-turbo'),
         system: `${SYSTEM_PROMPT}\n\n## CONTEXTO OPERATIVO: ${currentContext.toUpperCase()}\nUsa las herramientas priorizadas para este contexto.`,
         messages: [{ role: 'user', content: message }],
@@ -131,6 +129,13 @@ export async function createAgent(options: {
           }
         }
       });
+
+      return {
+        response: result.text,
+        steps: result.steps,
+        toolCalls: result.toolCalls,
+        memoryUsed: 0 // Placeholder para integración con memoria
+      };
     },
 
     async cleanup() {

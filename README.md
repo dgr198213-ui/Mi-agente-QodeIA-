@@ -14,6 +14,7 @@ Este es un agente autónomo construido con **Next.js**, **Vercel AI SDK**, **Sup
 - **Integración con GitHub**: Gestión de repositorios, incluyendo lectura de archivos, creación de ramas, commits y Pull Requests.
 - **Integración con Vercel**: Gestión de despliegues, consulta de estado de proyectos y más.
 - **Integración MCP (Model Context Protocol)**: Conexión con NotebookLM para una base de conocimiento técnica verificable.
+- **Gobernanza Dinámica (PageRank)**: Sistema de ranking estructural para priorizar herramientas y memorias basándose en su utilidad histórica y contexto.
 - **Interfaz de Usuario**: Componente de chat en React y **Panel de Administración MCP** para gestión web.
 
 ## Prerrequisitos
@@ -74,9 +75,12 @@ VERCEL_PROJECT_ID=your_project_id
 ## Estructura del Proyecto
 
 -   `/app/api/agent/route.ts`: Endpoint principal de la API para el agente.
--   `/agent/core/agent.ts`: Lógica central del ciclo de vida del agente (pensar, decidir, actuar).
--   `/agent/tools/`: Herramientas especializadas para GitHub, Supabase y Vercel.
--   `/agent/memory/`: Sistema de memoria híbrida (corta y larga duración con vectores).
+-   `/agent/core/agent.ts`: Lógica central del ciclo de vida del agente.
+-   `/agent/core/pagerank.ts`: Motor de PageRank para gobernanza.
+-   `/agent/core/context.ts`: Inferencia de contexto operativo.
+-   `/agent/core/governance.ts`: Gestión de transiciones y persistencia de ranks.
+-   `/agent/tools/`: Herramientas para GitHub, Supabase, Vercel y MCP.
+-   `/agent/memory/`: Sistema de memoria híbrida y gestión de estado.
 -   `/lib/`: Clientes para los servicios de Supabase, GitHub y Vercel.
 -   `/components/Chat.tsx`: Interfaz de usuario para interactuar con el agente.
 -   `/app/admin/mcp/page.tsx`: Panel de administración web para MCP.
