@@ -142,7 +142,6 @@ ${message}
       response: result.response,
       steps: result.steps,
       toolCalls: result.toolCalls,
-      memoryUsed: result.memoryUsed,
       projectContext: projectContext ? {
         projectName: projectContext.project.name,
         filesCount: projectContext.context?.files_count || 0,
