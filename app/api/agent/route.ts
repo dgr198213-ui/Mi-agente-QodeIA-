@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAgent } from '@/agent/core/agent_with_mcp';
+import { createAgent } from '../../../agent/core/agent_with_mcp';
 import { createClient } from '@supabase/supabase-js';
 
 // Crear cliente de Supabase con service role para acceso completo
