@@ -1,11 +1,5 @@
 import { z } from 'zod';
-import { supabase } from '../../lib/supabase';
-import {
-  createTask,
-  updateTaskStatus,
-  getPendingTasks,
-} from '../../lib/supabase';
-import { onAgentSolutionSuccess } from '../../hooks/mcp-sync';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Herramientas de Supabase para el agente
@@ -350,17 +344,23 @@ export const supabaseTools = {
       metadata?: Record<string, any>;
     }) => {
       try {
-        const task = await createTask({
-          title,
-          description,
-          status: 'pending',
-          priority,
-          metadata,
-        });
+        const { data, error } = await supabase
+          .from('tasks')
+          .insert({
+            title,
+            description,
+            status: 'pending',
+            priority,
+            metadata,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
 
         return {
           success: true,
-          task,
+          task: data,
           message: `Tarea "${title}" creada exitosamente`,
         };
       } catch (error: any) {
@@ -380,7 +380,7 @@ export const supabaseTools = {
     parameters: z.object({
       taskId: z.string().describe('ID de la tarea'),
       status: z
-        .enum(['pending', 'in_progress', 'completed', 'failed'])
+        .enum(['pending', 'in_progress', 'completed', 'failed', 'cancelled'])
         .describe('Nuevo estado de la tarea'),
     }),
     execute: async ({
@@ -388,95 +388,55 @@ export const supabaseTools = {
       status,
     }: {
       taskId: string;
-      status: 'pending' | 'in_progress' | 'completed' | 'failed';
+      status: string;
     }) => {
       try {
-        const completedAt =
-          status === 'completed' || status === 'failed'
-            ? new Date().toISOString()
-            : undefined;
-
-        const task = await updateTaskStatus(taskId, status, completedAt);
-
-        return {
-          success: true,
-          task,
-          message: `Tarea actualizada a estado: ${status}`,
-        };
-      } catch (error: any) {
-        return {
-          success: false,
-          error: error.message,
-        };
-      }
-    },
-  },
-
-  /**
-   * Lista las tareas pendientes
-   */
-  listPendingTasks: {
-    description:
-      'Lista las tareas pendientes o en progreso, ordenadas por prioridad.',
-    parameters: z.object({
-      limit: z
-        .number()
-        .optional()
-        .describe('Número máximo de tareas a retornar (por defecto: 10)'),
-    }),
-    execute: async ({ limit = 10 }: { limit?: number }) => {
-      try {
-        const tasks = await getPendingTasks(limit);
-
-        return {
-          success: true,
-          count: tasks.length,
-          tasks,
-        };
-      } catch (error: any) {
-        return {
-          success: false,
-          error: error.message,
-        };
-      }
-    },
-  },
-
-  /**
-   * Registra una solución exitosa para un error
-   */
-  recordErrorSolution: {
-    description: 'Registra una solución exitosa para un error específico. Si la solución es validada varias veces, se sincroniza con la base de conocimiento MCP.',
-    parameters: z.object({
-      error_signature: z.string().describe('Firma o mensaje del error'),
-      solution_steps: z.array(z.string()).describe('Pasos seguidos para resolver el error'),
-      context: z.record(z.any()).optional().describe('Contexto adicional del error'),
-    }),
-    execute: async ({ error_signature, solution_steps, context }) => {
-      try {
-        // 1. Guardar en agent_solutions (simulado con insertData)
-        const { data: saved, error } = await supabase
-          .from('agent_solutions')
-          .insert({
-            error_signature,
-            solution_steps,
-            context,
-            success_count: 1, // En un flujo real, esto se incrementaría
-            last_used: new Date().toISOString(),
-          })
+        const { data, error } = await supabase
+          .from('tasks')
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq('id', taskId)
           .select()
           .single();
 
         if (error) throw error;
 
-        // 2. NUEVO: Si es exitosa (simulamos validación), sincronizar con MCP
-        // En producción, esto se activaría cuando success_count >= 3
-        await onAgentSolutionSuccess(saved);
+        return {
+          success: true,
+          task: data,
+          message: `Estado de tarea actualizado a ${status}`,
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+    },
+  },
+
+  /**
+   * Obtiene tareas pendientes
+   */
+  getPendingTasks: {
+    description: 'Obtiene la lista de tareas pendientes del agente.',
+    parameters: z.object({
+      limit: z.number().optional().default(10),
+    }),
+    execute: async ({ limit }: { limit: number }) => {
+      try {
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('status', 'pending')
+          .order('priority', { ascending: false })
+          .limit(limit);
+
+        if (error) throw error;
 
         return {
           success: true,
-          message: 'Solución registrada y sincronizada con base de conocimiento',
-          solution: saved,
+          count: data?.length || 0,
+          tasks: data,
         };
       } catch (error: any) {
         return {
@@ -487,20 +447,3 @@ export const supabaseTools = {
     },
   },
 };
-
-/**
- * Convierte las herramientas al formato esperado por Vercel AI SDK
- */
-export function getSupabaseToolsForAI() {
-  return Object.entries(supabaseTools).reduce(
-    (acc, [name, tool]) => {
-      acc[name] = {
-        description: tool.description,
-        parameters: tool.parameters,
-        execute: tool.execute,
-      };
-      return acc;
-    },
-    {} as Record<string, any>
-  );
-}
