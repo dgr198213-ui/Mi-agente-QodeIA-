@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     // Parsear body
     const body = await request.json();
-    const { message, sessionId, projectId } = body;
+    const { message, sessionId, projectId, context: editorContext } = body;
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
@@ -112,27 +112,50 @@ export async function POST(request: NextRequest) {
       enableMCP: true
     });
 
-    // Construir mensaje con contexto del proyecto si está disponible
-    let enhancedMessage = message;
+    // Construir mensaje con contexto del proyecto y del editor
+    let enhancedMessage = "";
+
+    // 1. Añadir contexto del editor (Monaco) si existe
+    if (editorContext) {
+      enhancedMessage += `
+CONTEXTO DEL EDITOR ACTUAL:
+Lenguaje: ${editorContext.language}
+Líneas: ${editorContext.lineCount}
+${editorContext.selectedCode ? `CÓDIGO SELECCIONADO:\n\`\`\`${editorContext.language}\n${editorContext.selectedCode}\n\`\`\`\n(Solo modifica esta parte si el usuario lo pide)\n` : ''}
+CÓDIGO COMPLETO:
+\`\`\`${editorContext.language}
+${editorContext.code}
+\`\`\`
+`;
+    }
     
+    // 2. Añadir contexto del proyecto desde Supabase si existe
     if (projectContext?.context) {
-      enhancedMessage = `
-CONTEXTO DEL PROYECTO:
+      enhancedMessage += `
+CONTEXTO GLOBAL DEL PROYECTO:
 Proyecto: ${projectContext.project.name}
 Descripción: ${projectContext.project.description || 'Sin descripción'}
 Archivos: ${projectContext.context.files_count}
-Tokens estimados: ${projectContext.context.token_estimate}
 
 ÍNDICE SEMÁNTICO:
 ${JSON.stringify(projectContext.context.semantic_index, null, 2)}
 
-CONTEXTO COMPRIMIDO:
-${projectContext.context.compressed_context.substring(0, 2000)}...
+CONTEXTO COMPRIMIDO RELEVANTE:
+${projectContext.context.compressed_context.substring(0, 1500)}...
+`;
+    }
+
+    // 3. Añadir instrucciones de formato
+    enhancedMessage += `
+REGLAS DEL ASISTENTE:
+- Eres un asistente de código experto.
+- Cuando generes código, usa bloques markdown: \`\`\`lenguaje
+- Si el usuario pide "modificar", "arreglar" o "cambiar", devuelve el bloque de código corregido.
+- Si el usuario pide "explicar", prioriza la explicación sobre el código.
 
 MENSAJE DEL USUARIO:
 ${message}
 `;
-    }
 
     // Procesar mensaje
     const result = await agent.processMessage(enhancedMessage);
