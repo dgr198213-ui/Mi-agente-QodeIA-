@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase as createClient } from '../../../../lib/supabase';
+import { supabase } from '../../../../lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
     const state = crypto.randomUUID();
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
     
     await supabase.from('agent_state').upsert({
       key: `oauth_state_${state}`,

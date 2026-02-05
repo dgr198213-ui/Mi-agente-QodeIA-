@@ -8,12 +8,11 @@
 // 1. app/api/mcp/auth/google/route.ts
 export const authGoogle = `
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase as createClient } from '../../../lib/supabase';
+import { supabase } from '../../../lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
     const state = crypto.randomUUID();
-    const supabase = createClient;
     
     await supabase.from('agent_state').upsert({
       key: \`oauth_state_\${state}\`,
@@ -42,7 +41,7 @@ export async function POST(request: NextRequest) {
 // 2. app/api/mcp/auth/callback/route.ts
 export const authCallback = `
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase as createClient } from '../../../lib/supabase';
+import { supabase } from '../../../lib/supabase';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -52,7 +51,6 @@ export async function GET(request: NextRequest) {
   if (!code || !state) return new NextResponse('Missing parameters', { status: 400 });
 
   try {
-    const supabase = createClient;
     const { data: stateData } = await supabase
       .from('agent_state')
       .select('value')
@@ -109,11 +107,10 @@ async function extractNotebookLMCookie(accessToken: string): Promise<string> {
 // 3. app/api/mcp/stats/route.ts
 export const statsRoute = `
 import { NextResponse } from 'next/server';
-import { supabase as createClient } from '../../../lib/supabase';
+import { supabase } from '../../../lib/supabase';
 
 export async function GET() {
   try {
-    const supabase = createClient;
     const { count: totalQueries } = await supabase.from('agent_state').select('*', { count: 'exact', head: true }).like('key', 'mcp_query_%');
     const { data: config } = await supabase.from('agent_state').select('value').eq('key', 'mcp_config').single();
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase as createClient } from '../../../../lib/supabase';
+import { supabase } from '../../../../lib/supabase';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -9,8 +9,6 @@ export async function GET(request: NextRequest) {
   if (!code || !state) return new NextResponse('Missing parameters', { status: 400 });
 
   try {
-    const supabase = createClient;
-    
     const { data: stateData } = await supabase
       .from('agent_state')
       .select('value')

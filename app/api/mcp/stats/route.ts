@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
-import { supabase as createClient } from '../../../../lib/supabase';
+import { supabase } from '../../../../lib/supabase';
 
 export async function GET() {
   try {
-    const supabase = createClient;
-    
     const { count: totalQueries } = await supabase
       .from('agent_state')
       .select('*', { count: 'exact', head: true })
