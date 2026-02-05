@@ -6,13 +6,13 @@
 
 import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { getMCPClient } from '../../mcp/client';
+import { getMCPClient } from '@/mcp/client';
 import { 
   queryDocumentation, 
   analyzeImpact,
   syncSolutionToKnowledgeBase,
   verifyArchitecturalDecision 
-} from '../tools/mcp_notebooklm';
+} from '@/agent/tools/mcp_notebooklm';
 
 // Importar herramientas existentes (asumiendo que existen en el repo)
 // Nota: En un entorno real, verificaríamos las rutas exactas
