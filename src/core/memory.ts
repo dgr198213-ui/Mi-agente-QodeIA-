@@ -22,7 +22,7 @@ export async function writeMemory(params: WriteMemoryParams, traceId: string): P
       session_id: params.session_id,
       embedding_status: 'pending',
     }).select().single()
-  );
+  ) as any;
 
   if (error) throw new Error(`Failed to write memory: ${error.message}`);
   return memory as MemoryEntry;
