@@ -36,14 +36,15 @@ export async function generatePlan(
   const steps: PlanStep[] = planData.steps || [];
   const estimatedRisk = calculateOverallRisk(steps);
 
-  const { data: plan, error } = await withRetry(() =>
-    supabase.from('agent_plans').insert({
+  const { data: plan, error } = await withRetry(async () => {
+    const result = await supabase.from('agent_plans').insert({
       session_id: context.session_id,
       goal,
       steps,
       estimated_risk: estimatedRisk,
-    }).select().single()
-  );
+    }).select().single();
+    return result;
+  }) as any;
 
   if (error) throw new Error(`Failed to save plan: ${error.message}`);
   return plan as AgentPlan;
