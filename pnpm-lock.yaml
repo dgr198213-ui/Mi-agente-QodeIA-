@@ -15,7 +15,7 @@ importers:
         specifier: ^21.0.2
         version: 21.1.1
       '@supabase/supabase-js':
-        specifier: ^2.47.10
+        specifier: ^2.48.1
         version: 2.94.1
       ai:
         specifier: ^4.0.0
