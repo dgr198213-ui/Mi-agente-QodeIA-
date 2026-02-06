@@ -13,16 +13,17 @@ interface WriteMemoryParams {
 }
 
 export async function writeMemory(params: WriteMemoryParams, traceId: string): Promise<MemoryEntry> {
-  const { data: memory, error } = await withRetry(() =>
-    supabase.from('agent_memory').insert({
+  const { data: memory, error } = await withRetry(async () => {
+    const result = await supabase.from('agent_memory').insert({
       type: params.type,
       content: params.content,
       tags: params.tags || [],
       project_id: params.project_id,
       session_id: params.session_id,
       embedding_status: 'pending',
-    }).select().single()
-  ) as any;
+    }).select().single();
+    return result;
+  }) as any;
 
   if (error) throw new Error(`Failed to write memory: ${error.message}`);
   return memory as MemoryEntry;
