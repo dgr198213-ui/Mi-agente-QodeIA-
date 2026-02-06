@@ -1,6 +1,11 @@
-# Agente Autónomo Full-Stack
+# Agente Autónomo Full-Stack (QodeIA Agent)
 
 Este es un agente autónomo construido con **Next.js**, **Vercel AI SDK**, **Supabase** y la **API de GitHub**. Puede gestionar repositorios, despliegues y operaciones de base de datos de forma autónoma.
+
+## 🔗 Ecosistema QodeIA
+Este repositorio forma parte del ecosistema integrado de **QodeIA**, trabajando en conjunto con:
+*   **[Plataforma-qd](https://github.com/dgr198213-ui/Plataforma-qd)**: El IDE modular (Howard OS) donde el agente actúa como el motor de ejecución de tareas (AI Task Runner) y chat contextual.
+*   **[Web-QodeIA-](https://github.com/dgr198213-ui/Web-QodeIA-)**: La cara pública y centro de administración, desde donde se gestionan las configuraciones de conocimiento (MCP) que el agente utiliza.
 
 ## Características
 
