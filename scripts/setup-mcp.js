@@ -132,7 +132,7 @@ async function main() {
   console.log('\nPróximos pasos:');
   console.log('1. Reinicia el servidor de desarrollo');
   console.log('2. Prueba: node scripts/test-mcp.js');
-  console.log('3. Activa MCP en el agente (ver agent/core/agent_with_mcp.ts)');
+  console.log('3. Activa MCP en el agente (ver agent/core/agent.ts)');
 
   rl.close();
 }
