@@ -120,7 +120,7 @@ vercel --prod
 
 | Componente | Ubicación | Descripción |
 |------------|-----------|-------------|
-| **Agente Core** | `/agent/core/agent_with_mcp.ts` | Lógica principal del agente con MCP |
+| **Agente Core** | `/agent/core/agent.ts` | Lógica principal del agente con MCP y PageRank |
 | **Herramientas Supabase** | `/agent/tools/supabase.ts` | Operaciones de base de datos |
 | **Herramientas MCP** | `/agent/tools/mcp_notebooklm.ts` | Integración con NotebookLM |
 | **Cliente MCP** | `/mcp/client.ts` | Cliente del Model Context Protocol |

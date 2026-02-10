@@ -9,7 +9,7 @@ console.log('🔍 Verificando archivos de integración...');
 const files = [
   'mcp/client.ts',
   'agent/tools/mcp_notebooklm.ts',
-  'agent/core/agent_with_mcp.ts',
+  'agent/core/agent.ts',
   'hooks/mcp-sync.ts',
   'scripts/setup-mcp.js',
   'scripts/test-mcp.js',
