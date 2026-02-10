@@ -1,0 +1,47 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schema/mcp-config.json",
+  "mcpServers": {
+    "notebooklm-howard-os": {
+      "command": "npx",
+      "args": ["-y", "notebooklm-mcp@latest"],
+      "env": {
+        "NOTEBOOKLM_NOTEBOOK_URL": "${HOWARD_OS_NOTEBOOK_URL}",
+        "NOTEBOOKLM_AUTH_COOKIE": "${NOTEBOOKLM_COOKIE}"
+      },
+      "description": "Howard OS - Arquitectura y Decisiones Técnicas",
+      "enabled": true
+    },
+    "notebooklm-soluciones": {
+      "command": "npx",
+      "args": ["-y", "notebooklm-mcp@latest"],
+      "env": {
+        "NOTEBOOKLM_NOTEBOOK_URL": "${SOLUCIONES_NOTEBOOK_URL}",
+        "NOTEBOOKLM_AUTH_COOKIE": "${NOTEBOOKLM_COOKIE}"
+      },
+      "description": "Base de conocimiento de soluciones y patrones",
+      "enabled": true
+    },
+    "notebooklm-ecosistema": {
+      "command": "npx",
+      "args": ["-y", "notebooklm-mcp@latest"],
+      "env": {
+        "NOTEBOOKLM_NOTEBOOK_URL": "${ECOSISTEMA_NOTEBOOK_URL}",
+        "NOTEBOOKLM_AUTH_COOKIE": "${NOTEBOOKLM_COOKIE}"
+      },
+      "description": "Vista completa del ecosistema (cross-repo)",
+      "enabled": false
+    }
+  },
+  "defaults": {
+    "timeout": 30000,
+    "retries": 3,
+    "cache": {
+      "enabled": true,
+      "ttl": 3600
+    }
+  },
+  "logging": {
+    "level": "info",
+    "destination": "supabase"
+  }
+}
