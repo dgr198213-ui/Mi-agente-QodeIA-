@@ -4,19 +4,7 @@
   "functions": {
     "app/api/agent/route.ts": {
       "maxDuration": 60,
-      "memory": 2048
-    },
-    "app/api/agent/execute/route.ts": {
-      "maxDuration": 300,
-      "memory": 2048
-    },
-    "app/api/agent/chat/route.ts": {
-      "maxDuration": 60,
       "memory": 1024
-    },
-    "app/api/agent/sync/route.ts": {
-      "maxDuration": 300,
-      "memory": 2048
     },
     "app/api/mcp/**/*.ts": {
       "maxDuration": 30,
