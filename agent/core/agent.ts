@@ -65,16 +65,14 @@ export async function createAgent(options: {
 }) {
   const { sessionId, userId, enableMCP = true } = options;
 
-  // Inicializar MCP si está habilitado
+  // Inicializar cliente MCP (sin conectar ansiosamente)
   let mcpClient = null;
   if (enableMCP) {
     try {
       mcpClient = getMCPClient(mcpConfig);
-      // Intentar conectar al servidor principal
-      await mcpClient.connect('notebooklm-howard-os');
-      console.log('[Agent] MCP habilitado y conectado');
+      logInfo('[Agent] MCP configurado (lazy connection habilitada)');
     } catch (error) {
-      console.error('[Agent] Error al conectar MCP:', error);
+      logError('[Agent] Error al configurar MCP:', error);
     }
   }
 
@@ -94,10 +92,9 @@ export async function createAgent(options: {
   };
 
   // Asegurar que todas las herramientas existan como nodos en PageRank
-  for (const toolKey of Object.keys(tools)) {
-    await ensureToolNode(toolKey);
-  }
-  await ensureToolNode('user_input');
+  // Nota: Esto se hace de forma asíncrona pero sin bloquear la respuesta inicial
+  Object.keys(tools).forEach(toolKey => ensureToolNode(toolKey));
+  ensureToolNode('user_input');
 
   return {
     sessionId,
@@ -121,10 +118,13 @@ export async function createAgent(options: {
         tools: rankedTools,
         maxSteps: 10,
         onStepFinish: async (step) => {
-          // Registrar transiciones entre herramientas
+          // Registrar transiciones entre herramientas con contexto de usuario
           if (step.toolCalls) {
             for (const call of step.toolCalls) {
-              await recordTransition(lastNodeKey, call.toolName, currentContext);
+              await recordTransition(lastNodeKey, call.toolName, {
+                contextName: currentContext,
+                userId
+              });
               lastNodeKey = call.toolName;
             }
           }
@@ -152,31 +152,55 @@ export async function createAgent(options: {
  */
 async function getRankedTools(tools: any, context: string) {
   try {
-    const { data: ranks } = await supabase
+    const { data: ranks, error } = await supabase
       .from('agent_node_ranks')
       .select('rank_score, agent_nodes!inner(node_key), agent_contexts!inner(name)')
       .eq('agent_contexts.name', context)
       .order('rank_score', { ascending: false });
 
+    if (error) {
+      logError('[Agent] Error obteniendo ranks de herramientas:', error);
+      return tools;
+    }
+
     // Si no hay ranks aún, devolver tools originales
     if (!ranks || ranks.length === 0) return tools;
-
-    // Reordenar herramientas (aquí simplemente retornamos el mismo objeto,
-    // pero el LLM recibirá las descripciones con info de prioridad si lo deseamos,
-    // o simplemente confiamos en que el orden de las keys en el objeto influye levemente)
-    // Una mejor forma es inyectar la prioridad en la descripción.
 
     const prioritizedTools = { ...tools };
     for (const rank of ranks) {
       const toolKey = (rank as any).agent_nodes.node_key;
       if (prioritizedTools[toolKey]) {
-        prioritizedTools[toolKey].description = `[PRIORIDAD: ${rank.rank_score.toFixed(2)}] ${prioritizedTools[toolKey].description}`;
+        // Inyectar la prioridad en la descripción para que el LLM lo sepa
+        prioritizedTools[toolKey].description = `[RELEVANCIA ESTRUCTURAL: ${rank.rank_score.toFixed(2)}] ${prioritizedTools[toolKey].description}`;
       }
     }
 
     return prioritizedTools;
   } catch (error) {
-    console.error('[Agent] Error ranking tools:', error);
+    logError('[Agent] Error crítico rankeando herramientas:', error);
     return tools;
   }
+}
+
+/**
+ * Helpers para logging estructurado
+ */
+function logInfo(message: string, data?: any) {
+  console.log(JSON.stringify({
+    level: 'info',
+    module: 'agent-core',
+    message,
+    timestamp: new Date().toISOString(),
+    ...data
+  }));
+}
+
+function logError(message: string, error: any) {
+  console.error(JSON.stringify({
+    level: 'error',
+    module: 'agent-core',
+    message,
+    error: error instanceof Error ? error.message : error,
+    timestamp: new Date().toISOString()
+  }));
 }

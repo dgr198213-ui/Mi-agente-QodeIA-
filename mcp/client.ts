@@ -5,7 +5,6 @@
 
 import { spawn, ChildProcess } from 'child_process';
 import { z } from 'zod';
-import { supabase } from '../lib/supabase';
 
 // Schemas de validación
 const MCPServerConfigSchema = z.object({
@@ -66,20 +65,32 @@ export class MCPClient {
   private cache: Map<string, { data: any; expires: number }> = new Map();
 
   constructor(config?: any) {
-    // La configuración se pasa ahora por el constructor o se carga externamente
+    this.config = this.parseConfig(config);
+  }
+
+  private parseConfig(config?: any): MCPConfig {
     if (config) {
-      this.config = MCPConfigSchema.parse(config);
-    } else {
-      // Valor por defecto para evitar errores si no se proporciona
-      this.config = {
-        mcpServers: {},
-        defaults: {
-          timeout: 30000,
-          retries: 3,
-          cache: { enabled: true, ttl: 3600 }
-        }
-      };
+      try {
+        return MCPConfigSchema.parse(config);
+      } catch (e) {
+        console.error('[MCP] Configuración inválida, usando valores por defecto', e);
+      }
     }
+    return {
+      mcpServers: {},
+      defaults: {
+        timeout: 30000,
+        retries: 3,
+        cache: { enabled: true, ttl: 3600 }
+      }
+    };
+  }
+
+  /**
+   * Actualiza la configuración del cliente
+   */
+  updateConfig(config: any) {
+    this.config = this.parseConfig(config);
   }
 
   /**
@@ -93,6 +104,17 @@ export class MCPClient {
    * Inicializa conexión con un servidor MCP específico
    */
   async connect(serverName: string): Promise<void> {
+    // 1. Verificar si ya está conectado y el proceso sigue vivo
+    const existingChild = this.servers.get(serverName);
+    if (existingChild && existingChild.exitCode === null) {
+      return; // Ya conectado
+    }
+
+    // 2. Limpiar proceso muerto si existe
+    if (existingChild) {
+      this.servers.delete(serverName);
+    }
+
     const serverConfig = this.config.mcpServers[serverName];
     if (!serverConfig || !serverConfig.enabled) {
       throw new Error(`Servidor MCP "${serverName}" no encontrado o deshabilitado`);
@@ -101,7 +123,7 @@ export class MCPClient {
     // Reemplazar variables de entorno
     const env = { ...process.env };
     for (const [key, value] of Object.entries(serverConfig.env)) {
-      const envValue = (value as string).replace(/\$\{(\w+)\}/g, (_, varName) => {
+      const envValue = value.replace(/\$\{(\w+)\}/g, (_, varName) => {
         return process.env[varName] || '';
       });
       env[key] = envValue;
@@ -115,13 +137,26 @@ export class MCPClient {
 
     this.servers.set(serverName, child);
 
+    // Manejo de errores del proceso
+    child.on('error', (err) => {
+      console.error(`[MCP:${serverName}] Proceso falló:`, err);
+      this.servers.delete(serverName);
+    });
+
+    child.on('exit', (code) => {
+      if (code !== 0 && code !== null) {
+        console.error(`[MCP:${serverName}] Proceso terminó con código ${code}`);
+      }
+      this.servers.delete(serverName);
+    });
+
     // Logging
     child.stdout?.on('data', (data) => {
-      console.log(`[MCP:${serverName}] ${data}`);
+      // console.log(`[MCP:${serverName}] ${data}`);
     });
 
     child.stderr?.on('data', (data) => {
-      console.error(`[MCP:${serverName}] ERROR: ${data}`);
+      console.error(`[MCP:${serverName}] STDERR: ${data}`);
     });
 
     // Esperar a que el servidor esté listo
@@ -153,10 +188,8 @@ export class MCPClient {
       }
     }
 
-    // Conectar si no está conectado
-    if (!this.servers.has(server)) {
-      await this.connect(server);
-    }
+    // Conectar si no está conectado (Lazy)
+    await this.connect(server);
 
     // Enviar solicitud MCP
     const result = await this.sendRequest(server, {
@@ -180,20 +213,6 @@ export class MCPClient {
   }
 
   /**
-   * Lista todos los cuadernos disponibles
-   */
-  async listNotebooks(server: string): Promise<MCPNotebook[]> {
-    if (!this.servers.has(server)) {
-      await this.connect(server);
-    }
-
-    return await this.sendRequest(server, {
-      method: 'list_notebooks',
-      params: {},
-    });
-  }
-
-  /**
    * Sincroniza un archivo con NotebookLM
    */
   async syncSource(params: {
@@ -204,9 +223,7 @@ export class MCPClient {
   }): Promise<MCPSyncResult> {
     const { server, file_path, content, metadata } = params;
 
-    if (!this.servers.has(server)) {
-      await this.connect(server);
-    }
+    await this.connect(server);
 
     return await this.sendRequest(server, {
       method: 'sync_source',
@@ -216,31 +233,6 @@ export class MCPClient {
         metadata,
       },
     });
-  }
-
-  /**
-   * Obtiene contexto específico de un cuaderno
-   */
-  async getContext(params: {
-    server: string;
-    source_id?: string;
-    query?: string;
-  }): Promise<string> {
-    const { server, source_id, query } = params;
-
-    if (!this.servers.has(server)) {
-      await this.connect(server);
-    }
-
-    const result = await this.sendRequest(server, {
-      method: 'get_context',
-      params: {
-        source_id,
-        query,
-      },
-    });
-
-    return result.context;
   }
 
   /**
@@ -266,12 +258,15 @@ export class MCPClient {
         reject(new Error(`Timeout esperando servidor MCP "${serverName}"`));
       }, this.config.defaults.timeout);
 
-      child.stdout?.once('data', (data) => {
+      const onData = (data: Buffer) => {
         if (data.toString().includes('ready')) {
           clearTimeout(timeout);
+          child.stdout?.off('data', onData);
           resolve();
         }
-      });
+      };
+
+      child.stdout?.on('data', onData);
     });
   }
 
@@ -280,8 +275,8 @@ export class MCPClient {
     request: { method: string; params: any }
   ): Promise<any> {
     const child = this.servers.get(server);
-    if (!child) {
-      throw new Error(`Servidor MCP "${server}" no conectado`);
+    if (!child || child.exitCode !== null) {
+      throw new Error(`Servidor MCP "${server}" no está conectado o ha terminado`);
     }
 
     return new Promise((resolve, reject) => {
@@ -320,6 +315,9 @@ let mcpClient: MCPClient | null = null;
 export function getMCPClient(config?: any): MCPClient {
   if (!mcpClient) {
     mcpClient = new MCPClient(config);
+  } else if (config && Object.keys(config.mcpServers || {}).length > 0) {
+    // Si ya existe pero se provee una configuración no vacía, actualizarla
+    mcpClient.updateConfig(config);
   }
   return mcpClient;
 }

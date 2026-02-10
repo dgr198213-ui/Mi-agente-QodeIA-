@@ -29,6 +29,18 @@ export async function searchHybridMemory(
     context?: string;
   } = {}
 ): Promise<MemoryResult[]> {
+  // 1. Validación de entrada
+  if (!Array.isArray(embedding) || embedding.length === 0) {
+    logError('Búsqueda híbrida fallida: El embedding debe ser un array no vacío');
+    return [];
+  }
+
+  // Comúnmente 1536 para OpenAI, pero permitimos flexibilidad si el modelo cambia
+  if (embedding.some(n => typeof n !== 'number' || isNaN(n))) {
+    logError('Búsqueda híbrida fallida: El embedding contiene valores no numéricos');
+    return [];
+  }
+
   const {
     match_threshold = 0.5,
     match_count = 5,
@@ -36,7 +48,7 @@ export async function searchHybridMemory(
   } = options;
 
   try {
-    // Llamar a la función RPC definida en el esquema SQL
+    // 2. Llamar a la función RPC definida en el esquema SQL
     const { data, error } = await supabase.rpc('match_memory_vectors_ranked', {
       query_embedding: embedding,
       match_threshold,
@@ -44,11 +56,14 @@ export async function searchHybridMemory(
       target_context_name: context || null
     });
 
-    if (error) throw error;
+    if (error) {
+      logError('Error en RPC de búsqueda híbrida', error);
+      throw error;
+    }
 
-    return data as MemoryResult[];
+    return (data || []) as MemoryResult[];
   } catch (error) {
-    console.error('[Memory] Error en búsqueda híbrida:', error);
+    logError('Error en búsqueda híbrida:', error);
     return [];
   }
 }
@@ -73,7 +88,10 @@ export async function saveMemory(
       .select()
       .single();
 
-    if (memError) throw memError;
+    if (memError) {
+      logError('Error insertando vector de memoria', memError);
+      throw memError;
+    }
 
     // 2. Registrar como nodo en PageRank
     const { error: nodeError } = await supabase
@@ -85,12 +103,35 @@ export async function saveMemory(
       });
 
     if (nodeError) {
-      console.warn('[Memory] No se pudo registrar la memoria como nodo:', nodeError);
+      logWarning('No se pudo registrar la memoria como nodo en PageRank', nodeError);
     }
 
     return memory;
   } catch (error) {
-    console.error('[Memory] Error al guardar memoria:', error);
+    logError('Error al guardar memoria:', error);
     throw error;
   }
+}
+
+/**
+ * Helpers para logging estructurado
+ */
+function logError(message: string, error?: any) {
+  console.error(JSON.stringify({
+    level: 'error',
+    module: 'memory-vector',
+    message,
+    error: error instanceof Error ? error.message : error,
+    timestamp: new Date().toISOString()
+  }));
+}
+
+function logWarning(message: string, data?: any) {
+  console.warn(JSON.stringify({
+    level: 'warn',
+    module: 'memory-vector',
+    message,
+    timestamp: new Date().toISOString(),
+    ...data
+  }));
 }

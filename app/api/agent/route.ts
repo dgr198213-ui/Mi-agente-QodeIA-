@@ -77,6 +77,8 @@ async function getProjectContext(projectId: string, userId: string) {
  * POST /api/agent
  */
 export async function POST(request: NextRequest) {
+  let agent: any = null;
+
   try {
     // Verificar autenticación
     const user = await verifyAuth(request);
@@ -106,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Crear agente con configuración MCP habilitada
-    const agent = await createAgent({
+    agent = await createAgent({
       sessionId: sessionId || user.id,
       userId: user.id,
       enableMCP: true
@@ -182,6 +184,15 @@ ${message}
       },
       { status: 500 }
     );
+  } finally {
+    // IMPORTANTE: Limpiar recursos del agente (especialmente procesos MCP)
+    if (agent && typeof agent.cleanup === 'function') {
+      try {
+        await agent.cleanup();
+      } catch (cleanupError) {
+        console.error('Error in agent cleanup:', cleanupError);
+      }
+    }
   }
 }
 
