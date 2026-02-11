@@ -1,19 +1,32 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS base
 WORKDIR /app
-COPY package*.json ./
-COPY tsconfig.json ./
-RUN npm ci
-COPY src ./src
-RUN npm run build
+RUN npm install -g pnpm
+COPY package*.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile
 
-FROM node:20-alpine
+FROM base AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci --production
-COPY --from=builder /app/dist ./dist
+COPY . .
+# Desactivar telemetría de Next.js durante el build
+ENV NEXT_TELEMETRY_DISABLED 1
+RUN pnpm build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
+
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
 USER nodejs
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1) })"
+
 EXPOSE 3000
-CMD ["node", "dist/index.js"]
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+
+CMD ["npm", "start"]
