@@ -3,6 +3,9 @@
   "version": "2.0.0",
   "description": "Agente autónomo QodeIA con integración MCP",
   "private": true,
+  "engines": {
+    "node": ">=18.17.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
