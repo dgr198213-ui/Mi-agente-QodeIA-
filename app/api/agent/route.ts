@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAgent } from '@/agent/core/agent';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '@/lib/logger';
+import { withTimeout, TimeoutError, savePartialState } from '@/lib/timeout-handler';
+
+// Configuración de timeouts
+const CONFIG = {
+  MAX_EXECUTION_TIME: 55000, // 55s (margen de 5s antes del timeout de Vercel)
+  MCP_TIMEOUT: 30000, // 30s para llamadas MCP
+};
 
 // Crear cliente de Supabase con service role para acceso completo
 const supabase = createClient(
@@ -29,7 +37,7 @@ async function verifyAuth(request: NextRequest) {
     
     return user;
   } catch (error) {
-    console.error('Error verifying auth:', error);
+    logger.error('Error verifying auth', error as Error, 'auth');
     return null;
   }
 }
@@ -59,7 +67,7 @@ async function getProjectContext(projectId: string, userId: string) {
       .single();
 
     if (contextError && contextError.code !== 'PGRST116') { // PGRST116 = not found
-      console.error('Error fetching context:', contextError);
+      logger.error('Error fetching context', contextError as any, 'project_context', { projectId });
     }
 
     return {
@@ -67,57 +75,21 @@ async function getProjectContext(projectId: string, userId: string) {
       context: contextData || null
     };
   } catch (error) {
-    console.error('Error getting project context:', error);
+    logger.error('Error getting project context', error as Error, 'project_context', { projectId });
     return null;
   }
 }
 
 /**
- * Endpoint principal del agente
- * POST /api/agent
+ * Lógica principal de procesamiento del agente
  */
-export async function POST(request: NextRequest) {
-  try {
-    // Verificar autenticación
-    const user = await verifyAuth(request);
-    
-    if (!user) {
-      return NextResponse.json(
-        { error: 'No autorizado. Por favor inicia sesión.' },
-        { status: 401 }
-      );
-    }
+async function processAgentMessage(agent: any, message: string, projectContext: any, editorContext: any) {
+  // Construir mensaje con contexto del proyecto y del editor
+  let enhancedMessage = "";
 
-    // Parsear body
-    const body = await request.json();
-    const { message, sessionId, projectId, context: editorContext } = body;
-
-    if (!message || typeof message !== 'string') {
-      return NextResponse.json(
-        { error: 'Mensaje inválido' },
-        { status: 400 }
-      );
-    }
-
-    // Obtener contexto del proyecto si se proporciona
-    let projectContext = null;
-    if (projectId) {
-      projectContext = await getProjectContext(projectId, user.id);
-    }
-
-    // Crear agente con configuración MCP habilitada
-    const agent = await createAgent({
-      sessionId: sessionId || user.id,
-      userId: user.id,
-      enableMCP: true
-    });
-
-    // Construir mensaje con contexto del proyecto y del editor
-    let enhancedMessage = "";
-
-    // 1. Añadir contexto del editor (Monaco) si existe
-    if (editorContext) {
-      enhancedMessage += `
+  // 1. Añadir contexto del editor (Monaco) si existe
+  if (editorContext) {
+    enhancedMessage += `
 CONTEXTO DEL EDITOR ACTUAL:
 Lenguaje: ${editorContext.language}
 Líneas: ${editorContext.lineCount}
@@ -127,11 +99,11 @@ CÓDIGO COMPLETO:
 ${editorContext.code}
 \`\`\`
 `;
-    }
-    
-    // 2. Añadir contexto del proyecto desde Supabase si existe
-    if (projectContext?.context) {
-      enhancedMessage += `
+  }
+  
+  // 2. Añadir contexto del proyecto desde Supabase si existe
+  if (projectContext?.context) {
+    enhancedMessage += `
 CONTEXTO GLOBAL DEL PROYECTO:
 Proyecto: ${projectContext.project.name}
 Descripción: ${projectContext.project.description || 'Sin descripción'}
@@ -143,10 +115,10 @@ ${JSON.stringify(projectContext.context.semantic_index, null, 2)}
 CONTEXTO COMPRIMIDO RELEVANTE:
 ${projectContext.context.compressed_context.substring(0, 1500)}...
 `;
-    }
+  }
 
-    // 3. Añadir instrucciones de formato
-    enhancedMessage += `
+  // 3. Añadir instrucciones de formato
+  enhancedMessage += `
 REGLAS DEL ASISTENTE:
 - Eres un asistente de código experto.
 - Cuando generes código, usa bloques markdown: \`\`\`lenguaje
@@ -157,11 +129,80 @@ MENSAJE DEL USUARIO:
 ${message}
 `;
 
-    // Procesar mensaje
-    const result = await agent.processMessage(enhancedMessage);
+  // Procesar mensaje con el agente
+  return await agent.processMessage(enhancedMessage);
+}
+
+/**
+ * Endpoint principal del agente
+ * POST /api/agent
+ */
+export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  let agent: any = null;
+  let body: any;
+
+  try {
+    // Verificar autenticación
+    const user = await verifyAuth(request);
+    
+    if (!user) {
+      logger.warn('Unauthorized access attempt', 'auth');
+      return NextResponse.json(
+        { error: 'No autorizado. Por favor inicia sesión.' },
+        { status: 401 }
+      );
+    }
+
+    // Parsear body
+    body = await request.json();
+    const { message, sessionId, projectId, context: editorContext } = body;
+
+    if (!message || typeof message !== 'string') {
+      return NextResponse.json(
+        { error: 'Mensaje inválido' },
+        { status: 400 }
+      );
+    }
+
+    logger.info('Agent request received', 'agent_execution', { projectId, userId: user.id });
+
+    // Obtener contexto del proyecto si se proporciona
+    let projectContext = null;
+    if (projectId) {
+      projectContext = await getProjectContext(projectId, user.id);
+    }
+
+    // Crear agente con configuración MCP habilitada
+    agent = await createAgent({
+      sessionId: sessionId || user.id,
+      userId: user.id,
+      enableMCP: true
+    });
+
+    // Ejecutar procesamiento con timeout global
+    const result = await withTimeout(
+      processAgentMessage(agent, message, projectContext, editorContext),
+      {
+        maxDuration: CONFIG.MAX_EXECUTION_TIME,
+        context: 'agent_execution',
+        onTimeout: async () => {
+          // Guardar estado parcial antes de timeout
+          await savePartialState(supabase, projectId || user.id, {
+            message,
+            timedOutAt: new Date().toISOString(),
+            duration: Date.now() - startTime,
+          });
+        },
+      }
+    );
+
+    const duration = Date.now() - startTime;
+    logger.info('Agent request completed', 'agent_execution', { projectId, duration });
 
     // Retornar respuesta
     return NextResponse.json({
+      success: true,
       response: result.response,
       steps: result.steps,
       toolCalls: result.toolCalls,
@@ -169,25 +210,66 @@ ${message}
         projectName: projectContext.project.name,
         filesCount: projectContext.context?.files_count || 0,
         tokensEstimate: projectContext.context?.token_estimate || 0
-      } : null
+      } : null,
+      metadata: {
+        duration,
+        timestamp: new Date().toISOString(),
+      }
     });
 
   } catch (error: any) {
-    console.error('Error in agent endpoint:', error);
+    const duration = Date.now() - startTime;
+
+    if (error instanceof TimeoutError) {
+      logger.error('Agent execution timed out', error, 'agent_execution', { 
+        projectId: body?.projectId,
+        duration,
+        maxDuration: error.duration,
+      });
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'execution_timeout',
+          message: 'La tarea está tomando más tiempo de lo esperado y se ha guardado para procesamiento en segundo plano.',
+          partialState: true,
+          metadata: {
+            duration,
+            maxDuration: error.duration,
+          },
+        },
+        { status: 202 }
+      );
+    }
+
+    logger.error('Agent execution failed', error as Error, 'agent_execution', { 
+      projectId: body?.projectId,
+      duration,
+    });
     
     return NextResponse.json(
       { 
-        error: 'Error al procesar la solicitud',
-        details: error.message 
+        success: false,
+        error: 'execution_error',
+        message: error.message || 'Error al procesar la solicitud',
+        metadata: { duration }
       },
       { status: 500 }
     );
+  } finally {
+    // Limpiar recursos del agente
+    if (agent && typeof agent.cleanup === 'function') {
+      try {
+        await agent.cleanup();
+      } catch (cleanupError) {
+        logger.error('Error in agent cleanup', cleanupError as Error, 'agent_execution');
+      }
+    }
   }
 }
 
 /**
  * Endpoint para streaming (opcional)
- * GET /api/agent/stream
  */
 export async function GET(request: NextRequest) {
   return NextResponse.json(
@@ -195,3 +277,7 @@ export async function GET(request: NextRequest) {
     { status: 405 }
   );
 }
+
+// Configuración de runtime para Vercel
+export const runtime = 'nodejs';
+export const maxDuration = 60;
