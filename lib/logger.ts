@@ -34,7 +34,8 @@ class Logger {
     }
 
     try {
-      await this.supabase.from('error_logs').insert({
+      // Usamos 'any' temporalmente para evitar el error de tipos de PostgREST si el esquema no está cargado localmente
+      await (this.supabase.from('error_logs') as any).insert({
         level: entry.level,
         message: entry.message,
         context: entry.context,
