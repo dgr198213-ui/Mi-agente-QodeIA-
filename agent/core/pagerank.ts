@@ -14,14 +14,17 @@ export type Transition = {
 };
 
 /**
- * Calcula el PageRank para un conjunto de nodos y transiciones.
- * R_{t+1} = d (M * R_t) + (1-d)/N * 1
+ * Compute PageRank scores for a set of nodes connected by weighted directed transitions.
  *
- * @param nodes Lista de nodos a rankear
- * @param transitions Matriz de transiciones (pesada)
- * @param d Factor de amortiguación (default 0.85)
- * @param iterations Número de iteraciones para convergencia
- * @returns Mapa de node_id -> rank_score
+ * Filters out transitions that reference unknown nodes, treats nodes with no outgoing weight
+ * as sinks whose rank is redistributed uniformly, and guards against invalid numeric results
+ * by falling back to a uniform rank for the affected node.
+ *
+ * @param nodes - Array of nodes to rank (each must have an `id`)
+ * @param transitions - Array of weighted directed transitions with `from`, `to`, and `weight`
+ * @param d - Damping factor in [0, 1] that controls random jump probability (default 0.85)
+ * @param iterations - Number of fixed-point iterations to perform (default 20)
+ * @returns Map from node id to PageRank score; scores sum to approximately 1
  */
 export function computePageRank(
   nodes: Node[],

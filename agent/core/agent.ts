@@ -56,7 +56,23 @@ Mantén tu razonamiento transparente y siempre cita fuentes cuando uses MCP.
 `;
 
 /**
- * Configuración del agente con MCP y PageRank
+ * Create an agent instance configured with optional MCP integrations and PageRank-based tool prioritization.
+ *
+ * The agent initializes MCP lazily (no eager connection), ensures PageRank nodes for available tools asynchronously,
+ * and exposes a message processing flow that infers context, ranks tools for that context, executes tool-enabled
+ * generation steps, and records tool transition traces.
+ *
+ * @param options - Configuration for the agent instance
+ * @param options.sessionId - Unique identifier for the agent session
+ * @param options.userId - Optional identifier for the user associated with the session
+ * @param options.enableMCP - When true (default), attempt to configure MCP client; the client is used only if configuration succeeds
+ * @returns An object representing the agent with the following properties:
+ *  - `sessionId`: the provided session identifier
+ *  - `userId`: the provided user identifier (if any)
+ *  - `tools`: consolidated tool set (GitHub, Supabase, Vercel and optional MCP tools)
+ *  - `mcpEnabled`: `true` when MCP was requested and successfully configured, `false` otherwise
+ *  - `processMessage(message)`: processes a user message by inferring context, ranking tools for that context, executing the generation flow with prioritized tools, recording tool transitions, and returning `{ response, steps, toolCalls, memoryUsed }`
+ *  - `cleanup()`: disconnects the MCP client if it was configured
  */
 export async function createAgent(options: {
   sessionId: string;
@@ -148,7 +164,11 @@ export async function createAgent(options: {
 }
 
 /**
- * Ordena y prioriza las herramientas basándose en sus scores de PageRank
+ * Prioritizes tool definitions by annotating their descriptions with structural relevance scores from the database.
+ *
+ * @param tools - Mapping of tool keys to tool definition objects
+ * @param context - Name of the operational context used to query ranking scores
+ * @returns A mapping of tools where descriptions are prefixed with `[RELEVANCIA ESTRUCTURAL: <score>]` for tools that have rank entries; returns the original `tools` if no ranks are found or an error occurs
  */
 async function getRankedTools(tools: any, context: string) {
   try {
@@ -183,7 +203,13 @@ async function getRankedTools(tools: any, context: string) {
 }
 
 /**
- * Helpers para logging estructurado
+ * Emit structured info-level log entries as JSON to stdout.
+ *
+ * The emitted object includes `level`, `module`, `message`, `timestamp`, and any additional
+ * top-level fields from `data`, then is printed via `console.log`.
+ *
+ * @param message - Primary log message
+ * @param data - Optional additional fields to merge into the log object
  */
 function logInfo(message: string, data?: any) {
   console.log(JSON.stringify({
@@ -195,6 +221,16 @@ function logInfo(message: string, data?: any) {
   }));
 }
 
+/**
+ * Logs an error event as a structured JSON object to the process error stream.
+ *
+ * The emitted JSON includes a severity level (`error`), module identifier (`agent-core`), the
+ * provided message, a string representation of the `error`, and an ISO8601 timestamp.
+ *
+ * @param message - Human-readable description of the error event
+ * @param error - Error instance or any value providing additional error details; if an `Error`
+ *                object is supplied, its `message` is used
+ */
 function logError(message: string, error: any) {
   console.error(JSON.stringify({
     level: 'error',

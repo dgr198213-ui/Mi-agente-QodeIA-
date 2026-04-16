@@ -73,8 +73,19 @@ async function getProjectContext(projectId: string, userId: string) {
 }
 
 /**
- * Endpoint principal del agente
- * POST /api/agent
+ * Handle POST /api/agent requests: authenticate the caller, optionally load project/editor context,
+ * run the code-assistant agent with an augmented prompt, and return the agent's result.
+ *
+ * The handler validates the incoming body for a `message` string, may enrich the prompt with editor
+ * and project context when provided, invokes the agent to process the message, and always attempts
+ * to clean up agent resources.
+ *
+ * @returns A JSON object containing:
+ * - `response`: the agent-generated textual reply,
+ * - `steps`: execution or reasoning steps produced by the agent,
+ * - `toolCalls`: any tool invocation records made by the agent,
+ * - `projectContext`: null or an object with `projectName`, `filesCount`, and `tokensEstimate`.
+ * On failure, returns a JSON error object with an `error` message and optional `details`.
  */
 export async function POST(request: NextRequest) {
   let agent: any = null;

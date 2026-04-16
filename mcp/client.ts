@@ -312,6 +312,12 @@ export class MCPClient {
 // Singleton global
 let mcpClient: MCPClient | null = null;
 
+/**
+ * Get the shared MCPClient instance, creating it if none exists and updating its configuration when a non-empty `mcpServers` map is provided.
+ *
+ * @param config - Optional MCP configuration used to initialize the client or to update the existing client's `mcpServers` when present and non-empty
+ * @returns The singleton MCPClient instance
+ */
 export function getMCPClient(config?: any): MCPClient {
   if (!mcpClient) {
     mcpClient = new MCPClient(config);
