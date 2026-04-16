@@ -6,8 +6,12 @@ import { supabase } from '@/lib/supabase';
 import { computePageRank, Node, Transition } from './pagerank';
 
 /**
- * Ejecuta el proceso de gobernanza para actualizar los scores de PageRank.
- * Puede ser global o específico a un contexto.
+ * Run a PageRank governance cycle to compute and persist node scores for either global or context-specific scope.
+ *
+ * Computes PageRank from stored nodes and transitions, updates persistent rank values, updates the last-run timestamp for the chosen scope, and records an audit entry.
+ *
+ * @param options.contextName - Optional name of the context to run contextual governance for; omit to run global governance.
+ * @param options.userId - Optional user identifier to include in the audit record.
  */
 export async function runGovernance(options: { contextName?: string; userId?: string } = {}) {
   const { contextName, userId } = options;
@@ -153,7 +157,12 @@ export async function runGovernance(options: { contextName?: string; userId?: st
 }
 
 /**
- * Registra una transición entre dos nodos (herramientas, memorias, etc.)
+ * Records an observed transition between two nodes and updates global and optional contextual transition counters.
+ *
+ * @param fromKey - The originating node's `node_key`.
+ * @param toKey - The destination node's `node_key`.
+ * @param options.contextName - If provided, increments the contextual transition for the named context.
+ * @param options.userId - Optional user id to include in the audit record.
  */
 export async function recordTransition(fromKey: string, toKey: string, options: { contextName?: string; userId?: string } = {}) {
   const { contextName, userId } = options;
@@ -237,7 +246,11 @@ export async function recordTransition(fromKey: string, toKey: string, options: 
 }
 
 /**
- * Asegura que una herramienta esté registrada como nodo
+ * Ensures a tool is present as a node in the agent_nodes table.
+ *
+ * Logs an error if the database operation fails or an unexpected exception occurs.
+ *
+ * @param toolKey - The unique node_key identifying the tool to ensure
  */
 export async function ensureToolNode(toolKey: string) {
   try {
@@ -256,7 +269,12 @@ export async function ensureToolNode(toolKey: string) {
 }
 
 /**
- * Helpers para logging estructurado
+ * Emit an informational structured log entry for the governance module.
+ *
+ * Emits a JSON object containing `level: 'info'`, `module: 'governance'`, `message`, `timestamp`, and any additional `data` fields merged at the top level.
+ *
+ * @param message - The primary log message
+ * @param data - Optional additional fields to include in the log output
  */
 function logInfo(message: string, data?: any) {
   console.log(JSON.stringify({
@@ -268,6 +286,12 @@ function logInfo(message: string, data?: any) {
   }));
 }
 
+/**
+ * Logs a structured error record to stderr using console.error.
+ *
+ * @param message - Short description of the error event
+ * @param error - The error object or value to include; if an `Error`, its `message` and `stack` are extracted
+ */
 function logError(message: string, error: any) {
   console.error(JSON.stringify({
     level: 'error',

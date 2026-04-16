@@ -34,6 +34,15 @@ export const memoryStore = {
   }
 };
 
+/**
+ * Logs a structured error record to the console's error stream.
+ *
+ * The logged payload includes severity level, module identifier, the provided message,
+ * the error's message when `error` is an `Error` (otherwise the raw `error`), and an ISO timestamp.
+ *
+ * @param message - A human-readable description of the error context
+ * @param error - The error object or value to record; if an `Error`, its `message` is logged
+ */
 function logError(message: string, error: any) {
   console.error(JSON.stringify({
     level: 'error',

@@ -15,11 +15,15 @@ export interface MemoryResult {
 }
 
 /**
- * Recupera memorias usando una combinación de similitud semántica y relevancia estructural (PageRank).
+ * Searches memories by combining semantic similarity with structural relevance (PageRank).
  *
- * @param embedding Vector de consulta (1536 dimensiones)
- * @param options Opciones de búsqueda
- * @returns Lista de memorias rankeadas
+ * Validates that `embedding` is a non-empty array of numbers before performing the search.
+ *
+ * @param embedding - Query embedding; must be a non-empty array of numbers
+ * @param options.match_threshold - Minimum semantic similarity score to consider (default: 0.5)
+ * @param options.match_count - Maximum number of matches to return (default: 5)
+ * @param options.context - Optional context name to restrict the search; use `null` to ignore context
+ * @returns An array of `MemoryResult` objects ranked by combined semantic and PageRank relevance; returns an empty array on validation failure or error
  */
 export async function searchHybridMemory(
   embedding: number[],
@@ -69,7 +73,13 @@ export async function searchHybridMemory(
 }
 
 /**
- * Guarda una nueva memoria y la registra como nodo en el sistema de gobernanza.
+ * Inserts a memory record with its embedding and registers it as a PageRank node.
+ *
+ * @param content - The text content of the memory to store.
+ * @param embedding - The numeric vector representation associated with the memory.
+ * @param metadata - Optional metadata object to store alongside the memory (defaults to `{}`).
+ * @returns The inserted memory record returned from the database.
+ * @throws When persisting the memory vector fails; node registration failures are logged as warnings but do not prevent the function from returning the inserted memory.
  */
 export async function saveMemory(
   content: string,
@@ -114,7 +124,10 @@ export async function saveMemory(
 }
 
 /**
- * Helpers para logging estructurado
+ * Emit a structured error log with module and timestamp.
+ *
+ * @param message - Human-readable error message to include in the log
+ * @param error - Optional error details; if an `Error` object, its `message` is used, otherwise the value is logged as-is
  */
 function logError(message: string, error?: any) {
   console.error(JSON.stringify({
@@ -126,6 +139,12 @@ function logError(message: string, error?: any) {
   }));
 }
 
+/**
+ * Emits a structured warning log entry for the `memory-vector` module.
+ *
+ * @param message - Human-readable warning message
+ * @param data - Optional additional fields to merge into the log object
+ */
 function logWarning(message: string, data?: any) {
   console.warn(JSON.stringify({
     level: 'warn',
