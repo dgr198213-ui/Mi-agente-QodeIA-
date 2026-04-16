@@ -1,6 +1,12 @@
 #!/bin/bash
 # Script para configurar variables de entorno en Vercel para Mi Agente QodeIA
 # Ejecutar desde el directorio del proyecto: ./configure-vercel-env.sh
+#
+# IMPORTANTE: Este script NO contiene valores de credenciales hardcodeados.
+# Las claves sensibles deben exportarse como variables de entorno antes de ejecutar:
+#   export NEXT_PUBLIC_SUPABASE_ANON_KEY="tu_clave_aqui"
+#   export HOWARD_OS_SUPABASE_KEY="tu_clave_aqui"
+#   ./configure-vercel-env.sh
 
 set -e
 
@@ -16,20 +22,27 @@ add_env() {
   local value=$2
   local env_type=${3:-"production preview development"}
   
+  if [ -z "$value" ] || [[ "$value" == "<"* ]]; then
+    echo "⚠️  Saltando $key (valor no configurado - define la variable de entorno o configura manualmente en Vercel)"
+    return
+  fi
+
   echo "📝 Añadiendo $key..."
   
   for env in $env_type; do
-    echo "$value" | vercel env add "$key" "$env" --yes 2>/dev/null || echo "  ⚠️  $key ya existe en $env"
+    # Usar printf en lugar de echo para evitar saltos de línea accidentales en el token
+    printf '%s' "$value" | vercel env add "$key" "$env" --yes 2>/dev/null || echo "  ⚠️  $key ya existe en $env"
   done
 }
 
 # Supabase Operativa (Agente QodeIA)
-add_env "NEXT_PUBLIC_SUPABASE_URL" "https://nknevqndawnokiaickkl.supabase.co"
-add_env "NEXT_PUBLIC_SUPABASE_ANON_KEY" "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5rbmV2cW5kYXdub2tpYWlja2tsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NjYwNDYsImV4cCI6MjA4NTM0MjA0Nn0.-bbHiVQFBsThmIOw4DRxAuk1YQbPFrp4FPvWELxjU5M"
+# Los valores se leen desde variables de entorno del sistema (NO hardcodear aquí)
+add_env "NEXT_PUBLIC_SUPABASE_URL" "${NEXT_PUBLIC_SUPABASE_URL:-https://nknevqndawnokiaickkl.supabase.co}"
+add_env "NEXT_PUBLIC_SUPABASE_ANON_KEY" "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-<TU_SUPABASE_ANON_KEY>}"
 
 # Supabase Howard OS (Base de Conocimiento)
-add_env "HOWARD_OS_SUPABASE_URL" "https://tztypjxqklxygfzbpkmm.supabase.co"
-add_env "HOWARD_OS_SUPABASE_KEY" "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR6dHlwanhxa2x4eWdmemJwa21tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0NjI5MTAsImV4cCI6MjA4NTAzODkxMH0.3rdL5389_b2evuZclL9pMOarn_Od3vg6Uwj-p--iZc8"
+add_env "HOWARD_OS_SUPABASE_URL" "${HOWARD_OS_SUPABASE_URL:-https://tztypjxqklxygfzbpkmm.supabase.co}"
+add_env "HOWARD_OS_SUPABASE_KEY" "${HOWARD_OS_SUPABASE_KEY:-<TU_HOWARD_OS_SUPABASE_KEY>}"
 
 # GitHub
 add_env "GITHUB_OWNER" "dgr198213-ui"
@@ -50,10 +63,14 @@ echo "⚠️  IMPORTANTE: Las siguientes variables deben ser configuradas manual
 echo "   - SUPABASE_SERVICE_ROLE_KEY (obtener del dashboard de Supabase)"
 echo "   - OPENAI_API_KEY (tu API key de OpenAI)"
 echo "   - GITHUB_TOKEN (tu token de GitHub)"
-echo "   - VERCEL_TOKEN (tu token de Vercel)"
+echo "   - VERCEL_TOKEN (tu token de Vercel - CRÍTICO: copiar sin saltos de línea)"
 echo "   - HOWARD_OS_NOTEBOOK_URL (URL del notebook de Howard OS en NotebookLM)"
 echo "   - SOLUCIONES_NOTEBOOK_URL (URL del notebook de Soluciones en NotebookLM)"
 echo "   - NOTEBOOKLM_COOKIE (cookie de autenticación de NotebookLM)"
+echo ""
+echo "⚠️  NOTA CRÍTICA sobre VERCEL_TOKEN:"
+echo "   Al copiar el token desde el panel de Vercel, asegúrate de que NO contenga"
+echo "   saltos de línea. Error conocido: 'Must not contain: \\n'"
 echo ""
 echo "🔄 Para aplicar los cambios, ejecuta:"
 echo "   vercel --prod"

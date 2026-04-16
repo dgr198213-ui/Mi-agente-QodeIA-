@@ -3,9 +3,19 @@ node_modules
 out
 build
 dist
+
+# Variables de entorno con credenciales - NUNCA subir al repositorio
 .env
 .env.local
-.env.production
 .env.development
+.env.production
+.env.staging
+
+# Mantener solo el template como referencia
+# .env.template  <-- este SI se puede subir (sin valores reales)
+
 .DS_Store
 *.log
+
+# TypeScript build info (generado automáticamente, no necesita versionarse)
+tsconfig.tsbuildinfo
