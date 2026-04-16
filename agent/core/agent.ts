@@ -164,11 +164,11 @@ export async function createAgent(options: {
 }
 
 /**
- * Prioritizes tool definitions by annotating their descriptions with structural relevance scores from the database.
+ * Annotates tool descriptions with structural relevance scores to prioritize tools for a given context.
  *
  * @param tools - Mapping of tool keys to tool definition objects
- * @param context - Name of the operational context used to query ranking scores
- * @returns A mapping of tools where descriptions are prefixed with `[RELEVANCIA ESTRUCTURAL: <score>]` for tools that have rank entries; returns the original `tools` if no ranks are found or an error occurs
+ * @param context - Name of the operational context used to determine ranking scores
+ * @returns A mapping of tools where descriptions for ranked tools are prefixed with `[RELEVANCIA ESTRUCTURAL: <score>]`; returns the original `tools` unchanged if no ranks are available or an error occurs
  */
 async function getRankedTools(tools: any, context: string) {
   try {
@@ -203,10 +203,10 @@ async function getRankedTools(tools: any, context: string) {
 }
 
 /**
- * Emit structured info-level log entries as JSON to stdout.
+ * Emits a structured info-level log entry as JSON to stdout.
  *
- * The emitted object includes `level`, `module`, `message`, `timestamp`, and any additional
- * top-level fields from `data`, then is printed via `console.log`.
+ * The log object contains `level`, `module`, `message`, `timestamp`, and any additional
+ * top-level fields merged from `data`.
  *
  * @param message - Primary log message
  * @param data - Optional additional fields to merge into the log object

@@ -157,11 +157,13 @@ export async function runGovernance(options: { contextName?: string; userId?: st
 }
 
 /**
- * Records an observed transition between two nodes and updates global and optional contextual transition counters.
+ * Record an observed transition between two node keys, incrementing global and optional contextual counters and writing an audit entry.
+ *
+ * If one or both node records are missing, the function attempts to create missing tool nodes and returns without incrementing counters. All operational errors are logged internally and not rethrown.
  *
  * @param fromKey - The originating node's `node_key`.
  * @param toKey - The destination node's `node_key`.
- * @param options.contextName - If provided, increments the contextual transition for the named context.
+ * @param options.contextName - If provided, increments the transition counter scoped to the named context.
  * @param options.userId - Optional user id to include in the audit record.
  */
 export async function recordTransition(fromKey: string, toKey: string, options: { contextName?: string; userId?: string } = {}) {
