@@ -11,8 +11,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test": "vitest run"
   },
   "dependencies": {
     "@ai-sdk/openai": "^0.0.66",
