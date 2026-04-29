@@ -35,7 +35,11 @@ async function verifyAuth(request: NextRequest) {
 }
 
 /**
- * Obtiene el contexto del proyecto desde Supabase
+ * Retrieve a project's record and its stored context when the specified user has access.
+ *
+ * @param projectId - The ID of the project to fetch.
+ * @param userId - The ID of the user used to verify access (owner or member).
+ * @returns An object with `project` (the project row) and `context` (the context_memory row or `null`), or `null` if the project is not found or the user lacks access.
  */
 async function getProjectContext(projectId: string, userId: string) {
   try {
@@ -73,19 +77,15 @@ async function getProjectContext(projectId: string, userId: string) {
 }
 
 /**
- * Handle POST /api/agent requests: authenticate the caller, optionally load project/editor context,
- * run the code-assistant agent with an augmented prompt, and return the agent's result.
+ * Handle POST /api/agent requests by authenticating the caller, optionally loading editor and project context,
+ * invoking the code-assistant agent with an augmented prompt, and returning the agent's outputs.
  *
- * The handler validates the incoming body for a `message` string, may enrich the prompt with editor
- * and project context when provided, invokes the agent to process the message, and always attempts
- * to clean up agent resources.
- *
- * @returns A JSON object containing:
+ * @returns A JSON object with the agent result:
  * - `response`: the agent-generated textual reply,
  * - `steps`: execution or reasoning steps produced by the agent,
- * - `toolCalls`: any tool invocation records made by the agent,
- * - `projectContext`: null or an object with `projectName`, `filesCount`, and `tokensEstimate`.
- * On failure, returns a JSON error object with an `error` message and optional `details`.
+ * - `toolCalls`: any tool invocation records produced by the agent,
+ * - `projectContext`: `null` or an object containing `projectName`, `filesCount`, and `tokensEstimate`.
+ * On failure, returns a JSON error object `{ error, details? }`.
  */
 export async function POST(request: NextRequest) {
   let agent: any = null;

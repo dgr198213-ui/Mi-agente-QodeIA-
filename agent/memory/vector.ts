@@ -73,13 +73,15 @@ export async function searchHybridMemory(
 }
 
 /**
- * Inserts a memory record with its embedding and registers it as a PageRank node.
+ * Persist a memory vector record and attempt to register it as a PageRank node.
  *
- * @param content - The text content of the memory to store.
- * @param embedding - The numeric vector representation associated with the memory.
- * @param metadata - Optional metadata object to store alongside the memory (defaults to `{}`).
- * @returns The inserted memory record returned from the database.
- * @throws When persisting the memory vector fails; node registration failures are logged as warnings but do not prevent the function from returning the inserted memory.
+ * Inserts a row into `memory_vectors` with the provided `content`, `embedding`, and `metadata`, then tries to create a corresponding `agent_nodes` entry. If node registration fails, the error is logged as a warning and does not prevent returning the inserted memory.
+ *
+ * @param content - The text content to store in the memory record
+ * @param embedding - The numeric vector associated with the memory
+ * @param metadata - Optional metadata to store with the memory (defaults to `{}`)
+ * @returns The inserted memory record from the database
+ * @throws If inserting the memory vector fails
  */
 export async function saveMemory(
   content: string,
