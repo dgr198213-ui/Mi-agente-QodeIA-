@@ -22,6 +22,20 @@ import { recordTransition, ensureToolNode } from './governance';
 import { supabase } from '@/lib/supabase';
 
 /**
+ * Función de logging consistente con el resto del ecosistema
+ */
+function logError(message: string, error: any) {
+  console.error(JSON.stringify({
+    level: 'error',
+    module: 'agent-core',
+    message,
+    error: error instanceof Error ? error.message : error,
+    stack: error instanceof Error ? error.stack : undefined,
+    timestamp: new Date().toISOString()
+  }));
+}
+
+/**
  * Sistema de prompts con reglas MCP integradas
  */
 export const SYSTEM_PROMPT = `
