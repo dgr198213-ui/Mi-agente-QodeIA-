@@ -1,7 +1,9 @@
 /**
- * Configuración Multi-LLM para QodeIA
- * Integra: Groq, DeepSeek, Gemini, OpenRouter, Mistral
+ * Configuración Multi-LLM para QodeIA (v2.0)
+ * Integra: DeepSeek, Gemini Flash Latest, Mistral, OpenRouter
  * Todos los modelos son gratuitos o tienen tier gratuito
+ * 
+ * CEO: Gemini Flash Latest (Reemplaza a Groq)
  */
 
 import { generateText, generateObject } from 'ai';
@@ -10,38 +12,12 @@ import { openai } from '@ai-sdk/openai';
 /**
  * Tipos de LLMs disponibles
  */
-export type LLMProvider = 'groq' | 'deepseek' | 'gemini' | 'openrouter' | 'mistral';
+export type LLMProvider = 'deepseek' | 'gemini' | 'openrouter' | 'mistral';
 
 /**
  * Configuración de cada proveedor
  */
 export const LLM_PROVIDERS = {
-  groq: {
-    name: 'Groq',
-    models: {
-      'llama-3.3-70b': {
-        name: 'Llama 3.3 70B',
-        speed: 'ultra-fast',
-        reasoning: 'excellent',
-        costTier: 'free',
-        useCase: 'CEO Orchestration, General reasoning'
-      },
-      'llama-3.1-8b': {
-        name: 'Llama 3.1 8B',
-        speed: 'ultra-fast',
-        reasoning: 'good',
-        costTier: 'free',
-        useCase: 'Fast deployments, simple tasks'
-      },
-      'mixtral-8x7b': {
-        name: 'Mixtral 8x7B',
-        speed: 'fast',
-        reasoning: 'very-good',
-        costTier: 'free',
-        useCase: 'General purpose, code'
-      }
-    }
-  },
   deepseek: {
     name: 'DeepSeek',
     models: {
@@ -64,6 +40,13 @@ export const LLM_PROVIDERS = {
   gemini: {
     name: 'Google Gemini',
     models: {
+      'gemini-flash-latest': {
+        name: 'Gemini Flash Latest',
+        speed: 'ultra-fast',
+        reasoning: 'excellent',
+        costTier: 'free',
+        useCase: 'CEO Orchestration, Database queries, Fast responses'
+      },
       'gemini-2.5-flash': {
         name: 'Gemini 2.5 Flash',
         speed: 'ultra-fast',
@@ -134,15 +117,17 @@ export interface SpecialistConfig {
 
 /**
  * Configuración de especialistas
+ * CEO ahora usa Gemini Flash Latest (eliminado Groq)
  */
 export const SPECIALIST_CONFIGS: Record<string, SpecialistConfig> = {
   ceo: {
     name: 'CEO Orchestrator',
-    provider: 'groq',
-    model: 'llama-3.3-70b-versatile',
+    provider: 'gemini',
+    model: 'gemini-flash-latest',
     temperature: 0.2,
     maxTokens: 2048,
     systemPrompt: `You are QodeIA CEO Agent — the workflow orchestrator for the QodeIA ecosystem.
+Powered by Google Gemini Flash Latest for ultra-fast reasoning.
 
 ## Your Role
 1. Analyze user requests and decompose into specialized tasks
@@ -156,12 +141,13 @@ export const SPECIALIST_CONFIGS: Record<string, SpecialistConfig> = {
 5. Maintain context across multiple specialist calls
 
 ## Decision Rules
-- For code operations → GitHub Specialist
-- For data/database → Supabase Specialist
-- For deployments → Vercel Specialist
-- For documentation/analysis → MCP Specialist
+- For code operations → GitHub Specialist (DeepSeek V3)
+- For data/database → Supabase Specialist (Gemini Flash)
+- For deployments → Vercel Specialist (Gemini Flash)
+- For documentation/analysis → MCP Specialist (Mistral Codestral)
 
-Always start with a clear plan, then delegate. Be concise and strategic.`
+Always start with a clear plan, then delegate. Be concise and strategic.
+Respond in the same language as the user request.`
   },
 
   github: {
@@ -171,6 +157,7 @@ Always start with a clear plan, then delegate. Be concise and strategic.`
     temperature: 0.1,
     maxTokens: 4096,
     systemPrompt: `You are the GitHub Specialist for QodeIA.
+Powered by DeepSeek V3 for excellent code reasoning.
 
 ## Responsibilities
 - Create and manage repositories
@@ -189,16 +176,19 @@ Always start with a clear plan, then delegate. Be concise and strategic.`
 ## Available Tools
 - github_create_repo, github_create_issue, github_list_repos
 - github_create_pr, github_list_issues, github_get_file_content
-- github_create_branch, github_update_file, github_delete_branch`
+- github_create_branch, github_update_file, github_delete_branch
+
+Respond in the same language as the request.`
   },
 
   supabase: {
     name: 'Supabase Specialist',
     provider: 'gemini',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-flash-latest',
     temperature: 0.1,
     maxTokens: 3000,
     systemPrompt: `You are the Supabase Specialist for QodeIA.
+Powered by Google Gemini Flash Latest for ultra-fast database operations.
 
 ## Responsibilities
 - Execute database queries efficiently
@@ -216,16 +206,19 @@ Always start with a clear plan, then delegate. Be concise and strategic.`
 ## Available Tools
 - supabase_query, supabase_insert, supabase_update, supabase_delete
 - supabase_vector_search, supabase_create_embedding
-- supabase_auth_user, supabase_list_tables`
+- supabase_auth_user, supabase_list_tables
+
+Respond in the same language as the request.`
   },
 
   vercel: {
     name: 'Vercel Specialist',
-    provider: 'groq',
-    model: 'llama-3.1-8b-instant',
+    provider: 'gemini',
+    model: 'gemini-flash-latest',
     temperature: 0.1,
     maxTokens: 2048,
     systemPrompt: `You are the Vercel Specialist for QodeIA.
+Powered by Google Gemini Flash Latest for rapid deployments.
 
 ## Responsibilities
 - Deploy projects to Vercel
@@ -242,7 +235,9 @@ Always start with a clear plan, then delegate. Be concise and strategic.`
 
 ## Available Tools
 - vercel_deploy, vercel_get_deployment_status
-- vercel_set_env_var, vercel_list_deployments, vercel_rollback`
+- vercel_set_env_var, vercel_list_deployments, vercel_rollback
+
+Respond in the same language as the request.`
   },
 
   mcp: {
@@ -252,6 +247,7 @@ Always start with a clear plan, then delegate. Be concise and strategic.`
     temperature: 0.0,
     maxTokens: 4096,
     systemPrompt: `You are the MCP (Model Context Protocol) Specialist for QodeIA.
+Powered by Mistral Codestral for expert code analysis.
 
 ## Responsibilities
 - Interface with NotebookLM and other MCP servers
@@ -268,7 +264,9 @@ Always start with a clear plan, then delegate. Be concise and strategic.`
 
 ## Available Tools
 - mcp_query_documentation, mcp_analyze_code
-- mcp_generate_documentation, mcp_list_tools`
+- mcp_generate_documentation, mcp_list_tools
+
+Respond in the same language as the request.`
   }
 };
 
@@ -291,10 +289,10 @@ export async function createLLMClient(config: SpecialistConfig) {
 
 /**
  * Obtener URL base para cada proveedor
+ * Groq removido - solo DeepSeek, Gemini, OpenRouter, Mistral
  */
 function getLLMBaseURL(provider: LLMProvider): string {
   const baseURLs: Record<LLMProvider, string> = {
-    groq: 'https://api.groq.com/openai/v1',
     deepseek: 'https://api.deepseek.com/v1',
     gemini: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     openrouter: 'https://openrouter.ai/api/v1',
@@ -305,15 +303,9 @@ function getLLMBaseURL(provider: LLMProvider): string {
 }
 
 /**
- * Información de costos
+ * Información de costos (Groq eliminado)
  */
 export const COST_SUMMARY = {
-  groq: {
-    tier: 'FREE',
-    rateLimit: '30 requests/minute',
-    monthlyFree: 'Unlimited',
-    description: 'Groq offers free API access with generous rate limits'
-  },
   deepseek: {
     tier: 'FREE-TIER',
     rateLimit: '60 requests/minute',
@@ -372,7 +364,7 @@ export function validateLLMConfig(): { valid: boolean; errors: string[] } {
  * Obtener resumen de configuración
  */
 export function getLLMConfigSummary() {
-  console.log('\n📊 QodeIA Multi-LLM Configuration Summary\n');
+  console.log('\n📊 QodeIA Multi-LLM Configuration Summary (v2.0)\n');
   console.log('Specialists and their models:');
   console.log('─'.repeat(60));
 
@@ -394,5 +386,6 @@ export function getLLMConfigSummary() {
     console.log(`   Monthly Free: ${cost.monthlyFree}`);
   }
 
-  console.log('\n✅ Total Monthly Cost: $0 (All free tier models)\n');
+  console.log('\n✅ Total Monthly Cost: $0 (All free tier models)');
+  console.log('✅ CEO: Gemini Flash Latest (Ultra-fast orchestration)\n');
 }

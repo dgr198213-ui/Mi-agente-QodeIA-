@@ -1,13 +1,15 @@
-# 🚀 QodeIA Multi-LLM Architecture
+# 🚀 QodeIA Multi-LLM Architecture (v2.0)
 
 ## Overview
 
 QodeIA implementa una arquitectura **CEO + 4 Especialistas** con modelos LLM gratuitos para máxima eficiencia de costos y rendimiento.
 
+**Actualización v2.0**: Groq ha sido eliminado. Gemini Flash Latest ahora actúa como CEO Orchestrator.
+
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                    QodeIA CEO Agent (Supervisor)                  │
-│                    Modelo: Groq Llama-3.3-70B                    │
+│                  Modelo: Gemini Flash Latest                      │
 │   Funciones: Routing, planificación, validación de outputs       │
 └──────────────────────────────────────────────────────────────────┘
               │                │              │              │
@@ -15,8 +17,8 @@ QodeIA implementa una arquitectura **CEO + 4 Especialistas** con modelos LLM gra
         │ GitHub    │    │ Supabase  │  │ Vercel   │  │ MCP      │
         │ Agent     │    │ Agent     │  │ Agent    │  │ Agent    │
         │           │    │           │  │          │  │          │
-        │ DeepSeek  │    │ Gemini    │  │ Groq     │  │ Mistral  │
-        │ V3        │    │ 2.5 Flash │  │ Llama-3  │  │ Codestral│
+        │ DeepSeek  │    │ Gemini    │  │ Gemini   │  │ Mistral  │
+        │ V3        │    │ Flash     │  │ Flash    │  │ Codestral│
         └───────────┘    └───────────┘  └──────────┘  └──────────┘
               │                │              │              │
         ┌─────▼─────────────────────────────────────────────────▼─────┐
@@ -28,14 +30,14 @@ QodeIA implementa una arquitectura **CEO + 4 Especialistas** con modelos LLM gra
 
 ## 🎯 Especialistas
 
-### 1. **CEO Orchestrator** (Groq Llama-3.3-70B)
+### 1. **CEO Orchestrator** (Gemini Flash Latest)
 - **Responsabilidad**: Orquestación de alto nivel, routing de tareas
 - **Características**:
   - Análisis de solicitudes del usuario
   - Descomposición de tareas complejas
   - Validación de outputs
   - Coordinación multi-especialista
-- **Velocidad**: Ultra-rápido (Groq)
+- **Velocidad**: Ultra-rápido (Gemini Flash Latest)
 - **Costo**: Gratuito
 
 **Archivo**: `agent/core/CEOOrchestrator.ts`
@@ -56,7 +58,7 @@ QodeIA implementa una arquitectura **CEO + 4 Especialistas** con modelos LLM gra
 
 **Archivo**: `agent/specialists/GitHubSpecialist.ts`
 
-### 3. **Supabase Specialist** (Gemini 2.5 Flash)
+### 3. **Supabase Specialist** (Gemini Flash Latest)
 - **Responsabilidad**: Base de datos, autenticación, búsqueda vectorial
 - **Herramientas**:
   - `supabase_query`: Consultar tabla
@@ -72,7 +74,7 @@ QodeIA implementa una arquitectura **CEO + 4 Especialistas** con modelos LLM gra
 
 **Archivo**: `agent/specialists/SupabaseSpecialist.ts`
 
-### 4. **Vercel Specialist** (Groq Llama-3.1-8B)
+### 4. **Vercel Specialist** (Gemini Flash Latest)
 - **Responsabilidad**: Deployments, variables de entorno, monitoreo
 - **Herramientas**:
   - `vercel_deploy`: Desplegar proyecto
@@ -119,9 +121,8 @@ Define:
 
 | Proveedor | Modelos | Tier | Rate Limit | Costo |
 |-----------|---------|------|-----------|-------|
-| **Groq** | Llama-3.3-70B, Llama-3.1-8B, Mixtral-8x7B | FREE | 30 req/min | $0 |
+| **Gemini** | Gemini Flash Latest, Gemini 2.5 Flash, Gemini 2.0 Pro | FREE | 15 req/min | $0 |
 | **DeepSeek** | DeepSeek V3, DeepSeek Coder | FREE-TIER | 60 req/min | $0 (con créditos) |
-| **Gemini** | Gemini 2.5 Flash, Gemini 2.0 Pro | FREE | 15 req/min | $0 |
 | **OpenRouter** | Llama-3.3-70B, Mistral-7B | FREE | Variable | $0 |
 | **Mistral** | Codestral, Mistral Large | FREE-TIER | 100 req/min | $0 (con créditos) |
 
@@ -137,11 +138,10 @@ npm install ai langchain
 
 ```bash
 # .env.local
-GROQ_API_KEY=your_groq_api_key
+GEMINI_API_KEY=AIzaSyCR53aZtrLVQSRfuOT2h6sRbWJxSmg0Gsc
 DEEPSEEK_API_KEY=your_deepseek_api_key
-GEMINI_API_KEY=your_gemini_api_key
-OPENROUTER_API_KEY=your_openrouter_api_key
 MISTRAL_API_KEY=your_mistral_api_key
+OPENROUTER_API_KEY=your_openrouter_api_key
 
 # GitHub
 GITHUB_TOKEN=your_github_token
@@ -230,10 +230,10 @@ export async function POST(request: Request) {
 | Operación | Tiempo Promedio | Especialista |
 |-----------|-----------------|--------------|
 | Crear repositorio | 2-3s | GitHub (DeepSeek) |
-| Consulta DB simple | 1-2s | Supabase (Gemini) |
-| Desplegar a Vercel | 30-60s | Vercel (Groq) |
+| Consulta DB simple | 1-2s | Supabase (Gemini Flash) |
+| Desplegar a Vercel | 30-60s | Vercel (Gemini Flash) |
 | Análisis de código | 3-5s | MCP (Mistral) |
-| Orquestación CEO | 1-2s | CEO (Groq) |
+| Orquestación CEO | 1-2s | CEO (Gemini Flash) |
 
 ### Compresión de Contexto
 
@@ -247,13 +247,11 @@ export async function POST(request: Request) {
 
 Todos los modelos utilizados están en tier gratuito o tienen créditos mensuales gratuitos:
 
-- **Groq**: Gratuito (unlimited)
-- **DeepSeek**: $5 créditos mensuales gratis
-- **Gemini**: Gratuito (15 req/min)
-- **OpenRouter**: Free tier disponible
-- **Mistral**: $5 créditos mensuales gratis
+- **Gemini Flash Latest**: Gratuito (15 req/min) - CEO + Supabase + Vercel
+- **DeepSeek**: $5 créditos mensuales gratis - GitHub Specialist
+- **Mistral**: $5 créditos mensuales gratis - MCP Specialist
 
-**Total**: $0/mes para MVP
+**Total**: $0/mes para MVP + Producción
 
 ## 🔐 Seguridad
 
@@ -286,9 +284,8 @@ Todos los modelos utilizados están en tier gratuito o tienen créditos mensuale
 ## 📚 Referencias
 
 - [LangChain Documentation](https://python.langchain.com/)
-- [Groq API](https://console.groq.com/)
-- [DeepSeek API](https://api.deepseek.com/)
 - [Google Gemini API](https://ai.google.dev/)
+- [DeepSeek API](https://api.deepseek.com/)
 - [Mistral API](https://console.mistral.ai/)
 - [OpenRouter](https://openrouter.ai/)
 
