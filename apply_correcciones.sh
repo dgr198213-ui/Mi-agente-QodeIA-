@@ -132,16 +132,16 @@ create_migration_issue() {
 run_build_tests() {
   local dir="$1"
   if [ -f "$dir/package.json" ]; then
-    echo "    - package.json encontrado, ejecutando npm ci && npm run build (si existe) && npm test (si existe)"
+    echo "    - package.json encontrado, ejecutando pnpm install && pnpm build (si existe) && pnpm test (si existe)"
     (
       cd "$dir"
-      if has_cmd npm; then
-        npm ci --silent || { echo "npm ci falló"; return 2; }
-        if npm run build --silent >/dev/null 2>&1; then echo "build OK"; else echo "build falló o no definido"; fi
-        if npm test --silent >/dev/null 2>&1; then echo "tests OK"; else echo "tests fallaron o no definidos"; fi
+      if has_cmd pnpm; then
+        pnpm install --silent || { echo "pnpm install falló"; return 2; }
+        if pnpm build --silent >/dev/null 2>&1; then echo "build OK"; else echo "build falló o no definido"; fi
+        if pnpm test --silent >/dev/null 2>&1; then echo "tests OK"; else echo "tests fallaron o no definidos"; fi
         return 0
       else
-        echo "npm no disponible; saltando build/tests"
+        echo "pnpm no disponible; saltando build/tests"
         return 1
       fi
     )
@@ -209,7 +209,7 @@ process_repo() {
             newmaj=$(major_from_version "$newver")
             if [ -n "$oldmaj" ] && [ -n "$newmaj" ] && [ "$oldmaj" -ne "$newmaj" ]; then
               major_bump=true
-              major_bump_details+="Package $oldname: $oldver -> $newver (major $oldmaj -> $newmaj)\n"
+              major_bump_details+="Package $oldname: $oldver -> $newver (major $oldmaj -> $newmaj)"$'\n'
             fi
           fi
         done <<< "$(echo "$old_lines")"
@@ -221,11 +221,11 @@ process_repo() {
     if [ "$safe" = "true" ] || [ "$ci_update" = "true" ] || [ -n "$workflow_changed" ]; then
       # Candidate to auto-merge (but check mergeable)
       if [ "$major_bump" = true ]; then
-        action_notes="Detectado bump mayor en package.json:\n$major_bump_details"
+        action_notes="Detectado bump mayor en package.json:"$'\n'"$major_bump_details"
         if [ "$FORCE_MAJOR" = true ]; then
-          action_notes+="\n--force-major activado: se permitirá merge automático."
+          action_notes+=$'\n'"--force-major activado: se permitirá merge automático."
         else
-          action_notes+="\nNo se mergeará automáticamente. Se creará un ISSUE de migración."
+          action_notes+=$'\n'"No se mergeará automáticamente. Se creará un ISSUE de migración."
         fi
       fi
 
@@ -237,7 +237,7 @@ process_repo() {
 
         build_ok=true
         if [ "$should_attempt_build" = true ]; then
-          echo "  - Hay cambios en package.json; validando build/test (si npm está disponible)..."
+          echo "  - Hay cambios en package.json; validando build/test (si pnpm está disponible)..."
           # Checkout PR head to temp dir and run build/test
           tmpd=$(mktemp -d)
           echo "    * Clonando repo en $tmpd para pruebas..."
@@ -246,26 +246,26 @@ process_repo() {
             pushd "$tmpd/repo" >/dev/null
             # checkout the PR ref using gh
             if gh pr checkout "$pr" --repo "$repo" >/dev/null 2>&1; then
-              if has_cmd npm; then
-                if npm ci --silent >/dev/null 2>&1; then
-                  if npm run build --silent >/dev/null 2>&1; then
+              if has_cmd pnpm; then
+                if pnpm install --silent >/dev/null 2>&1; then
+                  if pnpm build --silent >/dev/null 2>&1; then
                     echo "    build OK"
                   else
                     echo "    build falló o no definido"
                     build_ok=false
                   fi
-                  if npm test --silent >/dev/null 2>&1; then
+                  if pnpm test --silent >/dev/null 2>&1; then
                     echo "    tests OK"
                   else
                     echo "    tests fallaron o no definidos"
                     # No marcar como fail absoluto; keep build_ok as is
                   fi
                 else
-                  echo "    npm ci falló"
+                  echo "    pnpm install falló"
                   build_ok=false
                 fi
               else
-                echo "    npm no disponible en runner; salto build/test"
+                echo "    pnpm no disponible en runner; salto build/test"
               fi
             else
               echo "    gh pr checkout falló para $repo#$pr"
@@ -313,7 +313,7 @@ process_repo() {
           echo "  NO se mergeará automáticamente $repo#$pr"
           # Crear issue de migración si hay bump mayor o build falló
           if [ "$major_bump" = true ] || [ "$build_ok" = false ]; then
-            issue_body="Se requiere intervención manual para PR #$pr en $repo\n\nTítulo: $title\nAutor: $author\n\nDetalles:\n$action_notes\n\nAcciones recomendadas:\n- Revisar breaking changes y changelogs de las dependencias (ej. Next/Tailwind/TypeScript).\n- Probar localmente: gh pr checkout $pr --repo $repo ; npm ci ; npm run build ; npm test\n- Ajustar configuración (tailwind.config.js, tsconfig.json, next.config.js) según sea necesario.\n"
+            issue_body="Se requiere intervención manual para PR #$pr en $repo"$'\n\n'"Título: $title"$'\n'"Autor: $author"$'\n\n'"Detalles:"$'\n'"$action_notes"$'\n\n'"Acciones recomendadas:"$'\n'"- Revisar breaking changes y changelogs de las dependencias (ej. Next/Tailwind/TypeScript)."$'\n'"- Probar localmente: gh pr checkout $pr --repo $repo ; pnpm install ; pnpm build ; pnpm test"$'\n'"- Ajustar configuración (tailwind.config.js, tsconfig.json, next.config.js) según sea necesario."$'\n'
             create_migration_issue "$repo" "$pr" "$title" "$issue_body"
           fi
         fi
@@ -321,7 +321,7 @@ process_repo() {
       else
         echo "  PR no mergeable automáticamente (mergeable=$mergeable, merge_state=$merge_state). Saltando."
         if [ "$major_bump" = true ]; then
-          issue_body="PR #$pr: Cambio mayor detectado pero PR NO mergeable automáticamente.\n\nDetalles:\n$major_bump_details\n\nPor favor resolver conflictos y ejecutar pruebas."
+          issue_body="PR #$pr: Cambio mayor detectado pero PR NO mergeable automáticamente."$'\n\n'"Detalles:"$'\n'"$major_bump_details"$'\n\n'"Por favor resolver conflictos y ejecutar pruebas."
           create_migration_issue "$repo" "$pr" "$title" "$issue_body"
         fi
       fi
