@@ -39,7 +39,7 @@ Opciones:
 Requisitos:
   - gh CLI autenticado (gh auth login) o export GITHUB_TOKEN.
   - jq instalado
-  - git, node/npm si quieres validar builds
+  - git, node/pnpm si quieres validar builds
 
 Ejemplo:
   export GITHUB_TOKEN="tu_pat_seguro"
@@ -101,14 +101,6 @@ is_ci_update() {
   echo "false"
 }
 
-# Util: extraer bumps de package.json en el patch (retorna lines con - "pkg": "x" y + "pkg": "y")
-extract_package_version_changes() {
-  local patch="$1"
-  # Buscamos líneas parecidas a: -    "next": "^15.1.11",
-  # y +    "next": "^16.2.4",
-  echo "$patch" | awk '/^[-+].*"[[:alnum:]._@\/-]+": *"[^0-9]*[0-9]+\.[0-9]+\.[0-9]/{ print }'
-}
-
 # Util simple para obtener major de versión semver simple a.b.c
 major_from_version() {
   local v="$1"
@@ -125,29 +117,6 @@ create_migration_issue() {
     echo "DRY-RUN: gh issue create --repo $repo -t \"MIGRACIÓN requerida para PR #$pr: $title\" -b \"${body//$'\n'/\\n}\""
   else
     gh issue create --repo "$repo" -t "MIGRACIÓN requerida para PR #$pr: $title" -b "$body"
-  fi
-}
-
-# Intentar construir / testear si hay package.json
-run_build_tests() {
-  local dir="$1"
-  if [ -f "$dir/package.json" ]; then
-    echo "    - package.json encontrado, ejecutando pnpm install && pnpm build (si existe) && pnpm test (si existe)"
-    (
-      cd "$dir"
-      if has_cmd pnpm; then
-        pnpm install --silent || { echo "pnpm install falló"; return 2; }
-        if pnpm build --silent >/dev/null 2>&1; then echo "build OK"; else echo "build falló o no definido"; fi
-        if pnpm test --silent >/dev/null 2>&1; then echo "tests OK"; else echo "tests fallaron o no definidos"; fi
-        return 0
-      else
-        echo "pnpm no disponible; saltando build/tests"
-        return 1
-      fi
-    )
-  else
-    echo "    - No hay package.json en este PR (o repo)."
-    return 1
   fi
 }
 
@@ -303,7 +272,7 @@ process_repo() {
           else
             echo "  Ejecutando merge de $repo#$pr ..."
             # Intentar merge (merge commit). Cambia a --squash si prefieres.
-            if gh pr merge "$pr" --repo "$repo" --merge --delete-branch --confirm; then
+            if gh pr merge "$pr" --repo "$repo" --merge --delete-branch; then
               echo "  Merge OK para $repo#$pr"
             else
               echo "  ERROR: gh pr merge falló para $repo#$pr"
@@ -337,12 +306,12 @@ apply_protection_to_repo() {
   local repo="$1"
   echo "Aplicando protección de rama main en $repo"
   if [ "$DRY_RUN" = true ]; then
-    echo "DRY-RUN: gh api -X PUT /repos/$repo/branches/main/protection -f required_status_checks='{\"strict\":true,\"contexts\":[\"ci\",\"build\",\"test\"]}' -f enforce_admins=true -f required_pull_request_reviews='{\"dismiss_stale_reviews\":true,\"required_approving_review_count\":1}'"
+    echo "DRY-RUN: gh api -X PUT /repos/$repo/branches/main/protection -f required_status_checks='{\"strict\":true,\"contexts\":[\"lint\",\"typecheck\",\"build\",\"test\"]}' -f enforce_admins=true -f required_pull_request_reviews='{\"dismiss_stale_reviews\":true,\"required_approving_review_count\":1}'"
   else
     gh api -X PUT \
       -H "Accept: application/vnd.github+json" \
       /repos/"$repo"/branches/main/protection \
-      -f required_status_checks='{"strict":true,"contexts":["ci","build","test"]}' \
+      -f required_status_checks='{"strict":true,"contexts":["lint","typecheck","build","test"]}' \
       -f enforce_admins=true \
       -f required_pull_request_reviews='{"dismiss_stale_reviews":true,"required_approving_review_count":1}'
     echo "Protección aplicada (si el token tiene permisos)."
