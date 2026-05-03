@@ -121,10 +121,12 @@ export default function AgentDashboard() {
             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Estado del Sistema</h2>
             <div className="space-y-2">
               <StatusItem label="CEO (Gemini Flash)" status="Activo" color="text-emerald-400" />
-              <StatusItem label="GitHub (DeepSeek)" status="Ready" color="text-blue-400" />
+              <StatusItem label="GitHub (DeepSeek V3)" status="Ready" color="text-blue-400" />
               <StatusItem label="Supa (Gemini Flash)" status="Ready" color="text-cyan-400" />
               <StatusItem label="Vercel (Gemini Flash)" status="Ready" color="text-emerald-400" />
               <StatusItem label="MCP (Mistral)" status="Ready" color="text-orange-400" />
+              <StatusItem label="Logic (Minimax M2.5)" status="Ready" color="text-purple-400" />
+              <StatusItem label="ProValidator (DeepSeek V4)" status="Ready" color="text-red-400" />
             </div>
           </div>
 
@@ -157,13 +159,13 @@ export default function AgentDashboard() {
         <header className="h-16 border-b border-[#1a2e2a] flex items-center justify-between px-8 bg-[#0a0f0e]/80 backdrop-blur-md z-10">
           <div className="flex items-center gap-4">
             <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold rounded border border-emerald-500/20 uppercase tracking-widest">
-              Gemini Flash CEO Active
+              QodeIA v3.0 - 6 Specialists Active
             </span>
           </div>
           <div className="flex items-center gap-6 text-sm text-gray-400">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Gemini Flash CEO Escuchando
+              CEO Orchestrator (Gemini Flash) Escuchando
             </div>
           </div>
         </header>
