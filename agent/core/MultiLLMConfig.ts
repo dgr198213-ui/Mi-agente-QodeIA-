@@ -1,53 +1,43 @@
 /**
- * Configuración Multi-LLM para QodeIA (v3.0)
- * Integra: DeepSeek (V3 + V4 Pro), Gemini Flash Latest, Mistral, OpenRouter (Minimax)
+ * Configuración Multi-LLM para QodeIA (v4.0)
+ * Integra: DeepSeek V4 (Flash + Pro con Thinking), Gemini Flash Latest, Minimax, OpenRouter
  * Todos los modelos son gratuitos o tienen tier gratuito
  * 
  * CEO: Gemini Flash Latest (Orquestación ultra-rápida)
- * Pro Validator: DeepSeek V4 Pro (Validación de código y arquitectura)
- * Logic Specialist: Minimax M2.5 (Razonamiento lógico y matemático)
+ * GitHub/MCP/Pro: DeepSeek V4 (Flash y Pro con Thinking activado)
+ * Logic: Minimax M2.5 (Razonamiento lógico)
+ * 
+ * ELIMINADO: Mistral (reemplazado por DeepSeek V4 Pro)
  */
 
 import { generateText, generateObject } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
 /**
- * Tipos de LLMs disponibles
+ * Tipos de LLMs disponibles (v4.0)
  */
-export type LLMProvider = 'deepseek' | 'gemini' | 'openrouter' | 'mistral' | 'huggingface';
+export type LLMProvider = 'deepseek' | 'gemini' | 'openrouter' | 'huggingface';
 
 /**
- * Configuración de cada proveedor (v3.0)
+ * Configuración de cada proveedor (v4.0)
  */
 export const LLM_PROVIDERS = {
   deepseek: {
     name: 'DeepSeek',
     models: {
-      'deepseek-chat': {
-        name: 'DeepSeek V3',
-        speed: 'fast',
+      'deepseek-v4-flash': {
+        name: 'DeepSeek V4 Flash',
+        speed: 'ultra-fast',
         reasoning: 'excellent',
         costTier: 'free-tier',
-        useCase: 'Code analysis, GitHub operations'
+        useCase: 'Code generation, GitHub operations, fast reasoning'
       },
-      'deepseek-coder': {
-        name: 'DeepSeek Coder',
-        speed: 'fast',
-        reasoning: 'excellent',
-        costTier: 'free-tier',
-        useCase: 'Code generation, debugging'
-      }
-    }
-  },
-  huggingface: {
-    name: 'HuggingFace (DeepSeek V4 Pro)',
-    models: {
-      'deepseek-ai/DeepSeek-V4-Pro': {
+      'deepseek-v4-pro': {
         name: 'DeepSeek V4 Pro',
         speed: 'fast',
         reasoning: 'expert',
         costTier: 'free-tier',
-        useCase: 'Advanced code validation, architecture review, Pro reasoning'
+        useCase: 'Advanced code validation, architecture review, deep thinking'
       }
     }
   },
@@ -86,39 +76,18 @@ export const LLM_PROVIDERS = {
         reasoning: 'expert',
         costTier: 'free',
         useCase: 'Logical reasoning, mathematical analysis, precise counting'
-      },
-      'meta-llama/llama-3.3-70b-instruct:free': {
-        name: 'Llama 3.3 70B (OpenRouter)',
-        speed: 'fast',
-        reasoning: 'excellent',
-        costTier: 'free',
-        useCase: 'Multi-model access, fallback'
-      },
-      'mistralai/mistral-7b-instruct:free': {
-        name: 'Mistral 7B (OpenRouter)',
-        speed: 'ultra-fast',
-        reasoning: 'good',
-        costTier: 'free',
-        useCase: 'Fast inference'
       }
     }
   },
-  mistral: {
-    name: 'Mistral AI',
+  huggingface: {
+    name: 'HuggingFace',
     models: {
-      'codestral-latest': {
-        name: 'Codestral',
+      'deepseek-ai/DeepSeek-V4-Pro': {
+        name: 'DeepSeek V4 Pro (HuggingFace)',
         speed: 'fast',
-        reasoning: 'excellent',
+        reasoning: 'expert',
         costTier: 'free-tier',
-        useCase: 'Code analysis, MCP operations'
-      },
-      'mistral-large': {
-        name: 'Mistral Large',
-        speed: 'medium',
-        reasoning: 'excellent',
-        costTier: 'paid',
-        useCase: 'Complex reasoning'
+        useCase: 'Alternative access to DeepSeek V4 Pro'
       }
     }
   }
@@ -134,11 +103,16 @@ export interface SpecialistConfig {
   temperature: number;
   maxTokens: number;
   systemPrompt: string;
+  thinking?: {
+    type: 'enabled' | 'disabled';
+    budgetTokens?: number;
+  };
+  reasoningEffort?: 'low' | 'medium' | 'high';
 }
 
 /**
- * Configuración de especialistas (v3.0)
- * Incluye: CEO, GitHub, Supabase, Vercel, MCP, Logic, ProValidator
+ * Configuración de especialistas (v4.0)
+ * CEO (Gemini) + GitHub/MCP/ProValidator (DeepSeek V4) + Logic (Minimax)
  */
 export const SPECIALIST_CONFIGS: Record<string, SpecialistConfig> = {
   ceo: {
@@ -147,29 +121,29 @@ export const SPECIALIST_CONFIGS: Record<string, SpecialistConfig> = {
     model: 'gemini-flash-latest',
     temperature: 0.2,
     maxTokens: 2048,
-    systemPrompt: `You are QodeIA CEO Agent — the workflow orchestrator for the QodeIA ecosystem (v3.0).
+    systemPrompt: `You are QodeIA CEO Agent — the workflow orchestrator for the QodeIA ecosystem (v4.0).
 Powered by Google Gemini Flash Latest for ultra-fast reasoning.
 
 ## Your Role
 1. Analyze user requests and decompose into specialized tasks
 2. Route tasks to appropriate specialist agents:
-   - github_specialist: Repository operations, code, PRs, issues
-   - supabase_specialist: Database, auth, vector search, embeddings
-   - vercel_specialist: Deployments, environment variables, monitoring
-   - mcp_specialist: NotebookLM integration, documentation analysis
-   - logic_specialist: Logical reasoning, mathematical analysis, precise operations
-   - pro_validator: Final validation of critical code and architecture decisions
+   - github_specialist: Repository operations, code, PRs, issues (DeepSeek V4 Flash)
+   - supabase_specialist: Database, auth, vector search, embeddings (Gemini Flash)
+   - vercel_specialist: Deployments, environment variables, monitoring (Gemini Flash)
+   - mcp_specialist: NotebookLM integration, documentation analysis (DeepSeek V4 Pro)
+   - logic_specialist: Logical reasoning, mathematical analysis (Minimax M2.5)
+   - pro_validator: Final validation of critical code and architecture (DeepSeek V4 Pro)
 3. Coordinate multi-agent workflows when needed
 4. Validate outputs before returning to user
 5. Maintain context across multiple specialist calls
 
 ## Decision Rules
-- For code operations → GitHub Specialist (with Pro Validator for critical code)
-- For data/database → Supabase Specialist
-- For deployments → Vercel Specialist
-- For documentation/analysis → MCP Specialist
+- For code operations → GitHub Specialist (DeepSeek V4 Flash with Thinking)
+- For data/database → Supabase Specialist (Gemini Flash)
+- For deployments → Vercel Specialist (Gemini Flash)
+- For documentation/analysis → MCP Specialist (DeepSeek V4 Pro with Thinking)
 - For logical/mathematical tasks → Logic Specialist (Minimax M2.5)
-- For critical code validation → Pro Validator (DeepSeek V4 Pro)
+- For critical code validation → Pro Validator (DeepSeek V4 Pro with Deep Thinking)
 
 Always start with a clear plan, then delegate. Be concise and strategic.
 Respond in the same language as the user request.`
@@ -178,11 +152,16 @@ Respond in the same language as the user request.`
   github: {
     name: 'GitHub Specialist',
     provider: 'deepseek',
-    model: 'deepseek-chat',
+    model: 'deepseek-v4-flash',
     temperature: 0.1,
     maxTokens: 4096,
+    thinking: {
+      type: 'enabled',
+      budgetTokens: 8000
+    },
+    reasoningEffort: 'high',
     systemPrompt: `You are the GitHub Specialist for QodeIA.
-Powered by DeepSeek V3 for excellent code reasoning.
+Powered by DeepSeek V4 Flash with Extended Thinking for excellent code reasoning.
 
 ## Responsibilities
 - Create and manage repositories
@@ -197,7 +176,7 @@ Powered by DeepSeek V3 for excellent code reasoning.
 - Confirm before destructive operations (delete, force push)
 - Provide clear explanations for code changes
 - Follow QodeIA coding standards
-- Flag critical code for Pro Validator review
+- Use extended thinking for complex code analysis
 
 ## Available Tools
 - github_create_repo, github_create_issue, github_list_repos
@@ -268,12 +247,17 @@ Respond in the same language as the request.`
 
   mcp: {
     name: 'MCP Specialist',
-    provider: 'mistral',
-    model: 'codestral-latest',
+    provider: 'deepseek',
+    model: 'deepseek-v4-pro',
     temperature: 0.0,
     maxTokens: 4096,
+    thinking: {
+      type: 'enabled',
+      budgetTokens: 16000
+    },
+    reasoningEffort: 'high',
     systemPrompt: `You are the MCP (Model Context Protocol) Specialist for QodeIA.
-Powered by Mistral Codestral for expert code analysis.
+Powered by DeepSeek V4 Pro with Extended Deep Thinking for expert code analysis.
 
 ## Responsibilities
 - Interface with NotebookLM and other MCP servers
@@ -287,6 +271,7 @@ Powered by Mistral Codestral for expert code analysis.
 - Reference source materials
 - Suggest best practices
 - Maintain code quality standards
+- Use deep thinking for complex architectural decisions
 
 ## Available Tools
 - mcp_query_documentation, mcp_analyze_code
@@ -328,12 +313,17 @@ Respond in the same language as the request. Always provide detailed reasoning.`
 
   pro_validator: {
     name: 'Pro Validator',
-    provider: 'huggingface',
-    model: 'deepseek-ai/DeepSeek-V4-Pro',
+    provider: 'deepseek',
+    model: 'deepseek-v4-pro',
     temperature: 0.1,
     maxTokens: 4096,
+    thinking: {
+      type: 'enabled',
+      budgetTokens: 20000
+    },
+    reasoningEffort: 'high',
     systemPrompt: `You are the Pro Validator for QodeIA.
-Powered by DeepSeek V4 Pro for advanced code validation and architectural review.
+Powered by DeepSeek V4 Pro with Extended Deep Thinking for advanced code validation and architectural review.
 
 ## Responsibilities
 - Validate critical code changes
@@ -348,6 +338,7 @@ Powered by DeepSeek V4 Pro for advanced code validation and architectural review
 - Evaluate performance impact
 - Suggest improvements
 - Provide clear explanations
+- Use deep thinking for complex validations
 
 ## Validation Checklist
 - Code quality and best practices
@@ -379,35 +370,28 @@ export async function createLLMClient(config: SpecialistConfig) {
 }
 
 /**
- * Obtener URL base para cada proveedor (v3.0)
+ * Obtener URL base para cada proveedor (v4.0)
  */
 function getLLMBaseURL(provider: LLMProvider): string {
   const baseURLs: Record<LLMProvider, string> = {
     deepseek: 'https://api.deepseek.com/v1',
-    huggingface: 'https://api-inference.huggingface.co/v1',
     gemini: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     openrouter: 'https://openrouter.ai/api/v1',
-    mistral: 'https://api.mistral.ai/v1'
+    huggingface: 'https://api-inference.huggingface.co/v1'
   };
 
   return baseURLs[provider];
 }
 
 /**
- * Información de costos (v3.0)
+ * Información de costos (v4.0 - Mistral eliminado)
  */
 export const COST_SUMMARY = {
   deepseek: {
     tier: 'FREE-TIER',
     rateLimit: '60 requests/minute',
     monthlyFree: '$5 free credits',
-    description: 'DeepSeek offers free tier with monthly credits'
-  },
-  huggingface: {
-    tier: 'FREE-TIER',
-    rateLimit: 'Variable',
-    monthlyFree: 'Free tier available',
-    description: 'HuggingFace offers free tier for inference'
+    description: 'DeepSeek offers free tier with monthly credits for V4 Flash and Pro'
   },
   gemini: {
     tier: 'FREE',
@@ -419,13 +403,7 @@ export const COST_SUMMARY = {
     tier: 'FREE',
     rateLimit: 'Variable',
     monthlyFree: 'Free tier available',
-    description: 'OpenRouter aggregates multiple free models'
-  },
-  mistral: {
-    tier: 'FREE-TIER',
-    rateLimit: '100 requests/minute',
-    monthlyFree: '$5 free credits',
-    description: 'Mistral offers free tier with monthly credits'
+    description: 'OpenRouter aggregates multiple free models including Minimax'
   }
 };
 
@@ -458,10 +436,10 @@ export function validateLLMConfig(): { valid: boolean; errors: string[] } {
 }
 
 /**
- * Obtener resumen de configuración (v3.0)
+ * Obtener resumen de configuración (v4.0)
  */
 export function getLLMConfigSummary() {
-  console.log('\n📊 QodeIA Multi-LLM Configuration Summary (v3.0)\n');
+  console.log('\n📊 QodeIA Multi-LLM Configuration Summary (v4.0)\n');
   console.log('Specialists and their models:');
   console.log('─'.repeat(60));
 
@@ -471,6 +449,10 @@ export function getLLMConfigSummary() {
     console.log(`   Model: ${config.model}`);
     console.log(`   Temperature: ${config.temperature}`);
     console.log(`   Max Tokens: ${config.maxTokens}`);
+    if (config.thinking?.type === 'enabled') {
+      console.log(`   Thinking: ENABLED (${config.thinking.budgetTokens} tokens)`);
+      console.log(`   Reasoning Effort: ${config.reasoningEffort}`);
+    }
   }
 
   console.log('\n\n💰 Cost Analysis (All Free Tier):');
@@ -485,6 +467,7 @@ export function getLLMConfigSummary() {
 
   console.log('\n✅ Total Monthly Cost: $0 (All free tier models)');
   console.log('✅ CEO: Gemini Flash Latest (Ultra-fast orchestration)');
-  console.log('✅ Pro Validator: DeepSeek V4 Pro (Expert code review)');
-  console.log('✅ Logic Specialist: Minimax M2.5 (Advanced reasoning)\n');
+  console.log('✅ Code Intelligence: DeepSeek V4 (Flash + Pro with Extended Thinking)');
+  console.log('✅ Logic Specialist: Minimax M2.5 (Advanced reasoning)');
+  console.log('✅ Mistral: ELIMINADO (reemplazado por DeepSeek V4 Pro)\n');
 }

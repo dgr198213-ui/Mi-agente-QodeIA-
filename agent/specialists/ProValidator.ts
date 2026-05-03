@@ -1,6 +1,7 @@
 /**
- * Pro Validator - Usa DeepSeek V4 Pro (vía HuggingFace)
+ * Pro Validator - Usa DeepSeek V4 Pro con Deep Extended Thinking
  * Especializado en validación de código, revisión de arquitectura y análisis experto
+ * v4.0: Acceso directo a api.deepseek.com con modo Thinking habilitado
  */
 
 import { generateText, CoreMessage } from 'ai';
@@ -38,7 +39,10 @@ export class ProValidator {
   async initialize() {
     const config = SPECIALIST_CONFIGS.pro_validator;
     this.llm = await createLLMClient(config);
-    console.log(`✅ Pro Validator initialized with ${config.provider.toUpperCase()} (DeepSeek V4 Pro)`);
+    console.log(`✅ Pro Validator initialized with ${config.provider.toUpperCase()} (${config.model})`);
+    console.log(`   Thinking: ${config.thinking?.type === 'enabled' ? 'ENABLED (Deep)' : 'DISABLED'}`);
+    console.log(`   Budget Tokens: ${config.thinking?.budgetTokens || 'default'}`);
+    console.log(`   Reasoning Effort: ${config.reasoningEffort || 'standard'}`);
   }
 
   /**

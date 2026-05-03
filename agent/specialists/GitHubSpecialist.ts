@@ -1,6 +1,7 @@
 /**
- * GitHub Specialist - Usa DeepSeek V3
+ * GitHub Specialist - Usa DeepSeek V4 Flash con Extended Thinking
  * Especializado en operaciones de código, repositorios, PRs e issues
+ * v4.0: Integración con modo Thinking para mejor razonamiento de código
  */
 
 import { generateText, CoreMessage } from 'ai';
@@ -28,7 +29,9 @@ export class GitHubSpecialist {
   async initialize() {
     const config = SPECIALIST_CONFIGS.github;
     this.llm = await createLLMClient(config);
-    console.log(`✅ GitHub Specialist initialized with ${config.provider.toUpperCase()}`);
+    console.log(`✅ GitHub Specialist initialized with ${config.provider.toUpperCase()} (${config.model})`);
+    console.log(`   Thinking: ${config.thinking?.type === 'enabled' ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`   Reasoning Effort: ${config.reasoningEffort || 'standard'}`);
   }
 
   /**

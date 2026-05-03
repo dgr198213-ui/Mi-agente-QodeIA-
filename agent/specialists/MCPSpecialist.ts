@@ -1,6 +1,7 @@
 /**
- * MCP Specialist - Usa Mistral Codestral
+ * MCP Specialist - Usa DeepSeek V4 Pro con Extended Thinking
  * Especializado en NotebookLM, análisis de código, documentación
+ * v4.0: Migrado de Mistral a DeepSeek V4 Pro para mejor razonamiento
  */
 
 import { generateText, CoreMessage } from 'ai';
@@ -28,7 +29,9 @@ export class MCPSpecialist {
   async initialize() {
     const config = SPECIALIST_CONFIGS.mcp;
     this.llm = await createLLMClient(config);
-    console.log(`✅ MCP Specialist initialized with ${config.provider.toUpperCase()}`);
+    console.log(`✅ MCP Specialist initialized with ${config.provider.toUpperCase()} (${config.model})`);
+    console.log(`   Thinking: ${config.thinking?.type === 'enabled' ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`   Reasoning Effort: ${config.reasoningEffort || 'standard'}`);
   }
 
   /**
