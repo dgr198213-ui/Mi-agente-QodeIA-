@@ -17,7 +17,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^0.0.66",
     "@supabase/supabase-js": "^2.47.10",
-    "ai": "^3.4.33",
+    "ai": "^6.0.174",
     "dotenv": "^16.4.7",
     "next": "16.2.4",
     "notebooklm-mcp": "latest",
@@ -30,7 +30,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^10.0.1",
-    "@next/eslint-plugin-next": "^16.1.6",
+    "@next/eslint-plugin-next": "^16.2.4",
     "@tailwindcss/vite": "^4.1.3",
     "@types/node": "^22",
     "@types/react": "^19",
