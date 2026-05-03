@@ -9,6 +9,8 @@ import { createGitHubSpecialist, GitHubSpecialist } from '../specialists/GitHubS
 import { createSupabaseSpecialist, SupabaseSpecialist } from '../specialists/SupabaseSpecialist';
 import { createVercelSpecialist, VercelSpecialist } from '../specialists/VercelSpecialist';
 import { createMCPSpecialist, MCPSpecialist } from '../specialists/MCPSpecialist';
+import { createLogicSpecialist, LogicSpecialist } from '../specialists/LogicSpecialist';
+import { createProValidator, ProValidator } from '../specialists/ProValidator';
 
 export interface CEORequest {
   userMessage: string;
@@ -36,6 +38,8 @@ export interface SpecialistRegistry {
   supabase: SupabaseSpecialist;
   vercel: VercelSpecialist;
   mcp: MCPSpecialist;
+  logic: LogicSpecialist;
+  proValidator: ProValidator;
 }
 
 export class CEOOrchestrator {
@@ -60,14 +64,16 @@ export class CEOOrchestrator {
     console.log('\n🚀 Initializing specialist agents...\n');
 
     try {
-      const [github, supabase, vercel, mcp] = await Promise.all([
+      const [github, supabase, vercel, mcp, logic, proValidator] = await Promise.all([
         createGitHubSpecialist(),
         createSupabaseSpecialist(),
         createVercelSpecialist(),
-        createMCPSpecialist()
+        createMCPSpecialist(),
+        createLogicSpecialist(),
+        createProValidator()
       ]);
 
-      this.specialists = { github, supabase, vercel, mcp };
+      this.specialists = { github, supabase, vercel, mcp, logic, proValidator };
       console.log('✅ All specialists initialized successfully\n');
     } catch (error) {
       console.error('Error initializing specialists:', error);
@@ -92,7 +98,7 @@ export class CEOOrchestrator {
         content: request.userMessage
       });
 
-      // CEO analiza la solicitud y decide qué especialista usar
+      // CEO analiza la solicitud y decide qué especialista usar (v3.0)
       const analysisResult = await this.analyzeRequest(request.userMessage);
 
       // Ejecutar tareas delegadas
@@ -129,22 +135,30 @@ export class CEOOrchestrator {
   }
 
   /**
-   * Analizar solicitud y determinar especialistas necesarios
+   * Analizar solicitud y determinar especialistas necesarios (v3.0)
    */
   private async analyzeRequest(userMessage: string): Promise<SpecialistTask[]> {
     const analysisPrompt = `
-You are analyzing a user request to determine which specialist agents should handle it.
+You are analyzing a user request to determine which specialist agents should handle it (v3.0).
 
 User request: "${userMessage}"
 
 Analyze and respond with a JSON array of tasks to delegate. Each task should have:
-- specialist: 'github' | 'supabase' | 'vercel' | 'mcp'
+- specialist: 'github' | 'supabase' | 'vercel' | 'mcp' | 'logic' | 'pro_validator'
 - task: specific task description for that specialist
+
+Specialist selection rules:
+- 'github': Repository operations, code management, PRs, issues
+- 'supabase': Database, auth, vector search
+- 'vercel': Deployments, environment variables
+- 'mcp': Documentation, analysis, NotebookLM
+- 'logic': Logical reasoning, mathematical analysis, counting problems (Minimax M2.5)
+- 'pro_validator': Critical code validation, architecture review (DeepSeek V4 Pro)
 
 Example response format:
 [
   { "specialist": "github", "task": "Create a new repository named 'my-app'" },
-  { "specialist": "supabase", "task": "Set up authentication schema" }
+  { "specialist": "pro_validator", "task": "Validate the code architecture" }
 ]
 
 Only include specialists that are actually needed. Respond ONLY with valid JSON array.
@@ -204,6 +218,21 @@ Only include specialists that are actually needed. Respond ONLY with valid JSON 
           case 'mcp':
             result = await this.specialists!.mcp.processRequest({
               task: task.task
+            });
+            break;
+
+          case 'logic':
+            result = await this.specialists!.logic.processRequest({
+              task: task.task,
+              requiresStepByStep: true,
+              precision: 'high'
+            });
+            break;
+
+          case 'pro_validator':
+            result = await this.specialists!.proValidator.processRequest({
+              task: task.task,
+              severity: 'critical'
             });
             break;
 
@@ -333,10 +362,10 @@ Provide a clear, professional response that:
 }
 
 /**
- * Interfaz para tarea delegada
+ * Interfaz para tarea delegada (v3.0)
  */
 interface SpecialistTask {
-  specialist: 'github' | 'supabase' | 'vercel' | 'mcp';
+  specialist: 'github' | 'supabase' | 'vercel' | 'mcp' | 'logic' | 'pro_validator';
   task: string;
 }
 
