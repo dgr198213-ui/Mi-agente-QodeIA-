@@ -127,6 +127,8 @@ export default function AgentDashboard() {
               <StatusItem label="MCP (DeepSeek V4 Pro)" status="Ready" color="text-orange-400" />
               <StatusItem label="Logic (Minimax M2.5)" status="Ready" color="text-purple-400" />
               <StatusItem label="ProValidator (DeepSeek V4 Pro)" status="Ready" color="text-red-400" />
+              <StatusItem label="Molbot (DeepSeek V4 Flash)" status="Ready" color="text-yellow-400" />
+              <StatusItem label="No-Code (Gemini Flash)" status="Ready" color="text-pink-400" />
             </div>
           </div>
 
@@ -159,7 +161,7 @@ export default function AgentDashboard() {
         <header className="h-16 border-b border-[#1a2e2a] flex items-center justify-between px-8 bg-[#0a0f0e]/80 backdrop-blur-md z-10">
           <div className="flex items-center gap-4">
             <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold rounded border border-emerald-500/20 uppercase tracking-widest">
-              QodeIA v4.0 - DeepSeek V4 + Gemini + Minimax
+              QodeIA v4.0 - 8 Specialists Active
             </span>
           </div>
           <div className="flex items-center gap-6 text-sm text-gray-400">
