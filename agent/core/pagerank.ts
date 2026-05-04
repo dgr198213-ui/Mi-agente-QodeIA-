@@ -14,14 +14,17 @@ export type Transition = {
 };
 
 /**
- * Calcula el PageRank para un conjunto de nodos y transiciones.
- * R_{t+1} = d (M * R_t) + (1-d)/N * 1
+ * Compute PageRank scores for a set of nodes connected by weighted directed transitions.
  *
- * @param nodes Lista de nodos a rankear
- * @param transitions Matriz de transiciones (pesada)
- * @param d Factor de amortiguación (default 0.85)
- * @param iterations Número de iteraciones para convergencia
- * @returns Mapa de node_id -> rank_score
+ * Filters out transitions that reference unknown nodes, treats nodes with no outgoing weight
+ * as sinks whose rank is redistributed uniformly, and guards against invalid numeric results
+ * by falling back to a uniform rank for the affected node.
+ *
+ * @param nodes - Array of nodes to rank (each must have an `id`)
+ * @param transitions - Array of weighted directed transitions with `from`, `to`, and `weight`
+ * @param d - Damping factor in [0, 1] that controls random jump probability (default 0.85)
+ * @param iterations - Number of fixed-point iterations to perform (default 20)
+ * @returns Map from node id to PageRank score; scores sum to approximately 1
  */
 export function computePageRank(
   nodes: Node[],
@@ -41,7 +44,11 @@ export function computePageRank(
   const outgoing = new Map<string, Transition[]>();
   const incoming = new Map<string, Transition[]>();
 
-  transitions.forEach((t) => {
+  // Filtrar transiciones que referencian nodos inexistentes (defensa de integridad)
+  const nodeIds = new Set(nodes.map(n => n.id));
+  const validTransitions = transitions.filter(t => nodeIds.has(t.from) && nodeIds.has(t.to));
+
+  validTransitions.forEach((t) => {
     if (!outgoing.has(t.from)) outgoing.set(t.from, []);
     outgoing.get(t.from)!.push(t);
 
@@ -63,11 +70,10 @@ export function computePageRank(
     const newRanks = new Map<string, number>();
 
     // Manejo de sumideros (nodos sin salida)
-    // En un PageRank puro, los sumideros se redistribuyen a todos los nodos
     let sinkRank = 0;
     nodes.forEach((node) => {
       if (!outgoing.has(node.id) || totalOutgoingWeights.get(node.id) === 0) {
-        sinkRank += ranks.get(node.id)!;
+        sinkRank += ranks.get(node.id) || 0;
       }
     });
 
@@ -76,15 +82,23 @@ export function computePageRank(
       const incomings = incoming.get(node.id) || [];
 
       incomings.forEach((t) => {
-        const fromRank = ranks.get(t.from)!;
+        // Defensa: usar 0 si el nodo de origen no está en ranks (no debería pasar por el filtro previo)
+        const fromRank = ranks.get(t.from) ?? 0;
         const totalWeight = totalOutgoingWeights.get(t.from) || 0;
+
         if (totalWeight > 0) {
           sum += (fromRank * t.weight) / totalWeight;
         }
       });
 
       // Fórmula de PageRank con factor de amortiguación y redistribución de sumideros
-      const newRank = d * (sum + sinkRank / N) + (1 - d) / N;
+      let newRank = d * (sum + sinkRank / N) + (1 - d) / N;
+
+      // Validación final contra NaN o valores infinitos
+      if (isNaN(newRank) || !isFinite(newRank)) {
+        newRank = 1 / N; // Fallback a distribución uniforme si algo sale mal
+      }
+
       newRanks.set(node.id, newRank);
     });
 

@@ -12,7 +12,6 @@
 
 import { spawn, ChildProcess } from 'child_process';
 import { z } from 'zod';
-import { supabase } from '../lib/supabase';
 
 // Schemas de validación
 const MCPServerConfigSchema = z.object({
@@ -110,6 +109,21 @@ export class MCPClient {
         },
       };
     }
+    return {
+      mcpServers: {},
+      defaults: {
+        timeout: 30000,
+        retries: 3,
+        cache: { enabled: true, ttl: 3600 }
+      }
+    };
+  }
+
+  /**
+   * Actualiza la configuración del cliente
+   */
+  updateConfig(config: any) {
+    this.config = this.parseConfig(config);
   }
 
   /**
@@ -215,10 +229,8 @@ export class MCPClient {
       }
     }
 
-    // Conectar si no está conectado
-    if (!this.servers.has(server)) {
-      await this.connect(server);
-    }
+    // Conectar si no está conectado (Lazy)
+    await this.connect(server);
 
     // Enviar solicitud MCP con reintentos
     const result = await this.sendRequestWithRetry(server, {
@@ -262,9 +274,7 @@ export class MCPClient {
   }): Promise<MCPSyncResult> {
     const { server, file_path, content, metadata } = params;
 
-    if (!this.servers.has(server)) {
-      await this.connect(server);
-    }
+    await this.connect(server);
 
     return await this.sendRequestWithRetry(server, {
       method: 'sync_source',
@@ -474,6 +484,12 @@ export class MCPClient {
 // Singleton global con soporte para actualización de configuración
 let mcpClient: MCPClient | null = null;
 
+/**
+ * Get the shared MCPClient instance, creating it if none exists and updating its configuration when a non-empty `mcpServers` map is provided.
+ *
+ * @param config - Optional MCP configuration used to initialize the client or to update the existing client's `mcpServers` when present and non-empty
+ * @returns The singleton MCPClient instance
+ */
 export function getMCPClient(config?: any): MCPClient {
   if (!mcpClient) {
     mcpClient = new MCPClient(config);

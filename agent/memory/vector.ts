@@ -29,11 +29,15 @@ export interface MemoryResult {
 }
 
 /**
- * Recupera memorias usando una combinación de similitud semántica y relevancia estructural (PageRank).
+ * Searches memories by combining semantic similarity with structural relevance (PageRank).
  *
- * @param embedding Vector de consulta (1536 dimensiones)
- * @param options Opciones de búsqueda
- * @returns Lista de memorias rankeadas
+ * Validates that `embedding` is a non-empty array of numbers before performing the search.
+ *
+ * @param embedding - Query embedding; must be a non-empty array of numbers
+ * @param options.match_threshold - Minimum semantic similarity score to consider (default: 0.5)
+ * @param options.match_count - Maximum number of matches to return (default: 5)
+ * @param options.context - Optional context name to restrict the search; use `null` to ignore context
+ * @returns An array of `MemoryResult` objects ranked by combined semantic and PageRank relevance; returns an empty array on validation failure or error
  */
 export async function searchHybridMemory(
   embedding: number[],
@@ -43,6 +47,18 @@ export async function searchHybridMemory(
     context?: string;
   } = {}
 ): Promise<MemoryResult[]> {
+  // 1. Validación de entrada
+  if (!Array.isArray(embedding) || embedding.length === 0) {
+    logError('Búsqueda híbrida fallida: El embedding debe ser un array no vacío');
+    return [];
+  }
+
+  // Comúnmente 1536 para OpenAI, pero permitimos flexibilidad si el modelo cambia
+  if (embedding.some(n => typeof n !== 'number' || isNaN(n))) {
+    logError('Búsqueda híbrida fallida: El embedding contiene valores no numéricos');
+    return [];
+  }
+
   const {
     match_threshold = 0.5,
     match_count = 5,
@@ -56,7 +72,7 @@ export async function searchHybridMemory(
   }
 
   try {
-    // Llamar a la función RPC definida en el esquema SQL
+    // 2. Llamar a la función RPC definida en el esquema SQL
     const { data, error } = await supabase.rpc('match_memory_vectors_ranked', {
       query_embedding: embedding,
       match_threshold,
@@ -77,7 +93,15 @@ export async function searchHybridMemory(
 }
 
 /**
- * Guarda una nueva memoria y la registra como nodo en el sistema de gobernanza.
+ * Persist a memory vector record and attempt to register it as a PageRank node.
+ *
+ * Inserts a row into `memory_vectors` with the provided `content`, `embedding`, and `metadata`, then tries to create a corresponding `agent_nodes` entry. If node registration fails, the error is logged as a warning and does not prevent returning the inserted memory.
+ *
+ * @param content - The text content to store in the memory record
+ * @param embedding - The numeric vector associated with the memory
+ * @param metadata - Optional metadata to store with the memory (defaults to `{}`)
+ * @returns The inserted memory record from the database
+ * @throws If inserting the memory vector fails
  */
 export async function saveMemory(
   content: string,
@@ -96,7 +120,10 @@ export async function saveMemory(
       .select()
       .single();
 
-    if (memError) throw memError;
+    if (memError) {
+      logError('Error insertando vector de memoria', memError);
+      throw memError;
+    }
 
     // 2. Registrar como nodo en PageRank
     const { error: nodeError } = await supabase
@@ -108,12 +135,44 @@ export async function saveMemory(
       });
 
     if (nodeError) {
-      console.warn('[Memory] No se pudo registrar la memoria como nodo:', nodeError);
+      logWarning('No se pudo registrar la memoria como nodo en PageRank', nodeError);
     }
 
     return memory;
   } catch (error) {
-    console.error('[Memory] Error al guardar memoria:', error);
+    logError('Error al guardar memoria:', error);
     throw error;
   }
+}
+
+/**
+ * Emit a structured error log with module and timestamp.
+ *
+ * @param message - Human-readable error message to include in the log
+ * @param error - Optional error details; if an `Error` object, its `message` is used, otherwise the value is logged as-is
+ */
+function logError(message: string, error?: any) {
+  console.error(JSON.stringify({
+    level: 'error',
+    module: 'memory-vector',
+    message,
+    error: error instanceof Error ? error.message : error,
+    timestamp: new Date().toISOString()
+  }));
+}
+
+/**
+ * Emits a structured warning log entry for the `memory-vector` module.
+ *
+ * @param message - Human-readable warning message
+ * @param data - Optional additional fields to merge into the log object
+ */
+function logWarning(message: string, data?: any) {
+  console.warn(JSON.stringify({
+    level: 'warn',
+    module: 'memory-vector',
+    message,
+    timestamp: new Date().toISOString(),
+    ...data
+  }));
 }
