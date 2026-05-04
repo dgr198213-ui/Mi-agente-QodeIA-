@@ -25,9 +25,9 @@ export default function HomePage() {
             <span className="text-xl font-bold text-emerald-400">QodeIA</span>
           </div>
           <nav className="hidden md:flex gap-8">
-            <a href="#producto" className="text-slate-300 hover:text-white transition">Producto</a>
-            <a href="#comunidad" className="text-slate-300 hover:text-white transition">Comunidad</a>
-            <a href="#recursos" className="text-slate-300 hover:text-white transition">Recursos</a>
+            <a href="https://mi-agente-qode-ia.vercel.app" target="_blank" rel="noopener noreferrer" className="text-slate-300 hover:text-white transition">QodeIA Agent</a>
+            <a href="https://plataforma-qd.vercel.app" target="_blank" rel="noopener noreferrer" className="text-slate-300 hover:text-white transition">QodeIA Howard</a>
+            <a href="https://web-qode-ia.vercel.app" target="_blank" rel="noopener noreferrer" className="text-slate-300 hover:text-white transition">QodeIA Community</a>
             <a href="#contacto" className="text-slate-300 hover:text-white transition">Contacto</a>
           </nav>
           <Link
@@ -111,7 +111,7 @@ export default function HomePage() {
             {/* IDE */}
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-8 hover:border-emerald-500/50 transition">
               <Code2 className="text-cyan-400 mb-4" size={32} />
-              <h3 className="text-xl font-bold mb-3">Howard OS</h3>
+              <h3 className="text-xl font-bold mb-3">QodeIA Howard</h3>
               <p className="text-slate-300 mb-4">
                 IDE contextual con editor de código, gestión de credenciales y análisis.
               </p>
@@ -127,7 +127,7 @@ export default function HomePage() {
               <Users className="text-blue-400 mb-4" size={32} />
               <h3 className="text-xl font-bold mb-3">Comunidad</h3>
               <p className="text-slate-300 mb-4">
-                Conecta con otros builders, comparte proyectos y aprende juntos.
+                Conecta con otros builders en QodeIA Community, comparte proyectos y aprende juntos.
               </p>
               <ul className="text-sm text-slate-400 space-y-2">
                 <li>✓ Perfiles de Builder</li>
@@ -201,17 +201,17 @@ export default function HomePage() {
             <div>
               <h4 className="font-bold mb-4">Producto</h4>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li><a href="#" className="hover:text-white transition">Agente</a></li>
-                <li><a href="#" className="hover:text-white transition">Howard OS</a></li>
-                <li><a href="#" className="hover:text-white transition">Comunidad</a></li>
+                <li><a href="https://mi-agente-qode-ia.vercel.app" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">QodeIA Agent</a></li>
+                <li><a href="https://plataforma-qd.vercel.app" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">QodeIA Howard</a></li>
+                <li><a href="https://web-qode-ia.vercel.app" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">QodeIA Community</a></li>
               </ul>
             </div>
             <div>
               <h4 className="font-bold mb-4">Recursos</h4>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li><a href="#" className="hover:text-white transition">Documentación</a></li>
-                <li><a href="#" className="hover:text-white transition">GitHub</a></li>
-                <li><a href="#" className="hover:text-white transition">Blog</a></li>
+                <li><a href="/docs" className="hover:text-white transition">Documentación</a></li>
+                <li><a href="https://github.com/dgr198213-ui" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">GitHub</a></li>
+                <li><a href="https://web-qode-ia.vercel.app" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">Blog</a></li>
               </ul>
             </div>
             <div>
