@@ -4,6 +4,20 @@
 
 import { supabase } from '@/lib/supabase';
 
+/**
+ * Función de logging consistente con el resto del ecosistema
+ */
+function logError(message: string, error: any) {
+  console.error(JSON.stringify({
+    level: 'error',
+    module: 'agent-memory-vector',
+    message,
+    error: error instanceof Error ? error.message : error,
+    stack: error instanceof Error ? error.stack : undefined,
+    timestamp: new Date().toISOString()
+  }));
+}
+
 export interface MemoryResult {
   id: string;
   content: string;
@@ -35,6 +49,12 @@ export async function searchHybridMemory(
     context
   } = options;
 
+  // Validar que el embedding contenga solo números finitos
+  if (embedding.some(n => typeof n !== 'number' || !Number.isFinite(n))) {
+    logError('Búsqueda híbrida fallida: El embedding contiene valores no numéricos o no finitos', { invalidValues: embedding.filter(n => typeof n !== 'number' || !Number.isFinite(n)) });
+    return [];
+  }
+
   try {
     // Llamar a la función RPC definida en el esquema SQL
     const { data, error } = await supabase.rpc('match_memory_vectors_ranked', {
@@ -44,11 +64,14 @@ export async function searchHybridMemory(
       target_context_name: context || null
     });
 
-    if (error) throw error;
+    if (error) {
+      logError('Error en RPC de búsqueda híbrida', error);
+      throw error;
+    }
 
-    return data as MemoryResult[];
+    return (data || []) as MemoryResult[];
   } catch (error) {
-    console.error('[Memory] Error en búsqueda híbrida:', error);
+    logError('Error en búsqueda híbrida:', error);
     return [];
   }
 }

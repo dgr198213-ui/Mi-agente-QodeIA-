@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:25-alpine AS base
 WORKDIR /app
 RUN npm install -g pnpm
 COPY package*.json pnpm-lock.yaml* ./
@@ -11,7 +11,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED 1
 RUN pnpm build
 
-FROM node:20-alpine AS runner
+FROM node:25-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1

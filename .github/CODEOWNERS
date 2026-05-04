@@ -1,0 +1,13 @@
+# CODEOWNERS - QodeIA Ecosystem
+
+# Default owner for all files
+*       @dgr198213-ui
+
+# Code review required for critical paths
+/.github/workflows/   @dgr198213-ui
+/agent/core/          @dgr198213-ui
+/src/lib/             @dgr198213-ui
+
+# Security sensitive files
+/supabase/           @dgr198213-ui
+/.env*                @dgr198213-ui
