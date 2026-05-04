@@ -209,6 +209,57 @@ describe('computePageRank', () => {
     }
   });
 
+  // ─── Convergence stability ───────────────────────────────────────────────────
+
+  it('produces stable ranks across extra iterations once converged', () => {
+    const nodes: Node[] = [
+      { id: 'a', rank: 0 },
+      { id: 'b', rank: 0 },
+      { id: 'c', rank: 0 },
+    ];
+    const transitions: Transition[] = [
+      { from: 'a', to: 'b', weight: 1 },
+      { from: 'b', to: 'c', weight: 1 },
+      { from: 'c', to: 'a', weight: 1 },
+    ];
+    const result50 = computePageRank(nodes, transitions, 0.85, 50);
+    const result100 = computePageRank(nodes, transitions, 0.85, 100);
+    // Symmetric graph: all nodes should have equal rank
+    for (const id of ['a', 'b', 'c']) {
+      expect(result50.get(id)!).toBeCloseTo(result100.get(id)!, 6);
+    }
+  });
+
+  it('produces valid ranks even with a very high iteration count (1000)', () => {
+    const nodes: Node[] = [
+      { id: 'x', rank: 0 },
+      { id: 'y', rank: 0 },
+    ];
+    const transitions: Transition[] = [
+      { from: 'x', to: 'y', weight: 1 },
+      { from: 'y', to: 'x', weight: 1 },
+    ];
+    const result = computePageRank(nodes, transitions, 0.85, 1000);
+    for (const v of result.values()) {
+      expect(isNaN(v)).toBe(false);
+      expect(isFinite(v)).toBe(true);
+      expect(v).toBeGreaterThan(0);
+    }
+  });
+
+  it('ignores all-invalid transitions when every transition references a missing node', () => {
+    const nodes: Node[] = [{ id: 'only', rank: 0 }];
+    // All transitions reference non-existent nodes
+    const transitions: Transition[] = [
+      { from: 'ghost1', to: 'ghost2', weight: 1 },
+      { from: 'ghost3', to: 'only', weight: 1 }, // to exists but from doesn't
+    ];
+    const result = computePageRank(nodes, transitions, 0.85, 10);
+    // 'only' is the sole node; with all transitions filtered, it's a sink
+    // PageRank: d*(0 + sinkRank/1) + (1-d)/1 = 1
+    expect(result.get('only')).toBeCloseTo(1, 4);
+  });
+
   // ─── Edge: single node, self-loop ────────────────────────────────────────────
 
   it('handles a single-node self-loop gracefully', () => {

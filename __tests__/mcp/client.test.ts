@@ -283,6 +283,146 @@ describe('getMCPClient', () => {
   });
 });
 
+// ── syncSource ────────────────────────────────────────────────────────────────
+
+describe('MCPClient.syncSource', () => {
+  it('connects (lazily) and sends sync_source request', async () => {
+    const child = makeFakeChild();
+    mockSpawn.mockReturnValue(child);
+    resolveReady(child);
+
+    const client = new MCPClient(VALID_CONFIG);
+    const syncResult = {
+      success: true,
+      notebook_id: 'nb-1',
+      source_id: 'src-1',
+      synced_at: new Date().toISOString(),
+    };
+
+    const sendSpy = vi.spyOn(client as any, 'sendRequest').mockResolvedValueOnce(syncResult);
+
+    const result = await client.syncSource({
+      server: 'test-server',
+      file_path: '/path/to/file.ts',
+      content: 'const x = 1;',
+      metadata: { lang: 'typescript' },
+    });
+
+    expect(sendSpy).toHaveBeenCalledWith('test-server', {
+      method: 'sync_source',
+      params: {
+        file_path: '/path/to/file.ts',
+        content: 'const x = 1;',
+        metadata: { lang: 'typescript' },
+      },
+    });
+    expect(result).toEqual(syncResult);
+  });
+
+  it('works without optional metadata', async () => {
+    const child = makeFakeChild();
+    mockSpawn.mockReturnValue(child);
+    resolveReady(child);
+
+    const client = new MCPClient(VALID_CONFIG);
+    const syncResult = { success: true, notebook_id: 'nb-2', source_id: 'src-2', synced_at: '' };
+
+    vi.spyOn(client as any, 'sendRequest').mockResolvedValueOnce(syncResult);
+
+    const result = await client.syncSource({
+      server: 'test-server',
+      file_path: '/file.md',
+      content: '# Docs',
+    });
+
+    expect(result).toEqual(syncResult);
+  });
+
+  it('propagates error from sendRequest', async () => {
+    const child = makeFakeChild();
+    mockSpawn.mockReturnValue(child);
+    resolveReady(child);
+
+    const client = new MCPClient(VALID_CONFIG);
+    vi.spyOn(client as any, 'sendRequest').mockRejectedValueOnce(new Error('sync failed'));
+
+    await expect(
+      client.syncSource({ server: 'test-server', file_path: '/f', content: 'c' })
+    ).rejects.toThrow('sync failed');
+  });
+});
+
+// ── sendRequest (private) error paths ─────────────────────────────────────────
+
+describe('MCPClient sendRequest (via query)', () => {
+  it('throws when the server process has exited (exitCode != null)', async () => {
+    const client = new MCPClient(VALID_CONFIG);
+    // Manually place a dead process in the servers map
+    const deadChild = makeFakeChild({ exitCode: 1 });
+    (client as any).servers.set('test-server', deadChild);
+
+    // sendRequest checks exitCode !== null and throws immediately
+    await expect(
+      (client as any).sendRequest('test-server', { method: 'test', params: {} })
+    ).rejects.toThrow('no está conectado o ha terminado');
+  });
+
+  it('throws when no server process is registered at all', async () => {
+    const client = new MCPClient(VALID_CONFIG);
+    await expect(
+      (client as any).sendRequest('test-server', { method: 'test', params: {} })
+    ).rejects.toThrow('no está conectado o ha terminado');
+  });
+
+  it('rejects when server response contains an error field', async () => {
+    const child = makeFakeChild({ exitCode: null });
+    const client2 = new MCPClient(VALID_CONFIG);
+    (client2 as any).servers.set('test-server', child);
+
+    const requestPromise = (client2 as any).sendRequest('test-server', {
+      method: 'query_notebook',
+      params: { query: 'x' },
+    });
+
+    // Simulate a JSON error response from the server
+    setImmediate(() => {
+      child.stdout.emit('data', Buffer.from(JSON.stringify({ error: 'not found' })));
+    });
+
+    await expect(requestPromise).rejects.toThrow('not found');
+  });
+
+  it('rejects with timeout when server does not respond', async () => {
+    const client = new MCPClient({
+      ...VALID_CONFIG,
+      defaults: { ...VALID_CONFIG.defaults, timeout: 50 },
+    });
+    const child = makeFakeChild({ exitCode: null });
+    (client as any).servers.set('test-server', child);
+
+    await expect(
+      (client as any).sendRequest('test-server', { method: 'ping', params: {} })
+    ).rejects.toThrow('Timeout');
+  }, 2000);
+
+  it('resolves with result when server returns valid JSON', async () => {
+    const client = new MCPClient(VALID_CONFIG);
+    const child = makeFakeChild({ exitCode: null });
+    (client as any).servers.set('test-server', child);
+
+    const requestPromise = (client as any).sendRequest('test-server', {
+      method: 'echo',
+      params: {},
+    });
+
+    setImmediate(() => {
+      child.stdout.emit('data', Buffer.from(JSON.stringify({ result: { ok: true } })));
+    });
+
+    await expect(requestPromise).resolves.toEqual({ ok: true });
+  });
+});
+
 // ── query cache logic ─────────────────────────────────────────────────────────
 
 describe('MCPClient query cache', () => {

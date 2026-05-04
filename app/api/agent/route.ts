@@ -1,8 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createAgent } from '@/agent/core/agent';
-import { createClient } from '@supabase/supabase-js';
+/**
+ * API Route Principal - QodeIA Multi-Agent Orchestrator
+ * Endpoint: POST /api/agent
+ * 
+ * Integra el nuevo CEOOrchestrator con el sistema de autenticación y contexto existente.
+ */
 
-// Crear cliente de Supabase con service role para acceso completo
+import { NextRequest, NextResponse } from 'next/server';
+import { createCEOOrchestrator } from '@/agent/core/CEOOrchestrator';
+import { createClient } from '@supabase/supabase-js';
+import { logger } from '@/lib/logger';
+
+// Configuración de timeouts
+const CONFIG = {
+  MAX_EXECUTION_TIME: 55000, // 55s
+};
+
+// Crear cliente de Supabase con service role
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -13,207 +26,111 @@ const supabase = createClient(
  */
 async function verifyAuth(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   const token = authHeader.substring(7);
-  
   try {
     const { data: { user }, error } = await supabase.auth.getUser(token);
-    
-    if (error || !user) {
-      return null;
-    }
-    
+    if (error || !user) return null;
     return user;
   } catch (error) {
-    console.error('Error verifying auth:', error);
+    logger.error('Error verifying auth', error as Error, 'auth');
     return null;
   }
 }
 
 /**
- * Retrieve a project's record and its stored context when the specified user has access.
- *
- * @param projectId - The ID of the project to fetch.
- * @param userId - The ID of the user used to verify access (owner or member).
- * @returns An object with `project` (the project row) and `context` (the context_memory row or `null`), or `null` if the project is not found or the user lacks access.
- */
-async function getProjectContext(projectId: string, userId: string) {
-  try {
-    // Verificar que el usuario tiene acceso al proyecto
-    const { data: project, error: projectError } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('id', projectId)
-      .or(`user_id.eq.${userId},id.in.(select project_id from user_projects where user_id='${userId}')`)
-      .single();
-
-    if (projectError || !project) {
-      throw new Error('Proyecto no encontrado o sin acceso');
-    }
-
-    // Obtener contexto del proyecto desde context_memory
-    const { data: contextData, error: contextError } = await supabase
-      .from('context_memory')
-      .select('*')
-      .eq('project_id', projectId)
-      .single();
-
-    if (contextError && contextError.code !== 'PGRST116') { // PGRST116 = not found
-      console.error('Error fetching context:', contextError);
-    }
-
-    return {
-      project,
-      context: contextData || null
-    };
-  } catch (error) {
-    console.error('Error getting project context:', error);
-    return null;
-  }
-}
-
-/**
- * Handle POST /api/agent requests by authenticating the caller, optionally loading editor and project context,
- * invoking the code-assistant agent with an augmented prompt, and returning the agent's outputs.
- *
- * @returns A JSON object with the agent result:
- * - `response`: the agent-generated textual reply,
- * - `steps`: execution or reasoning steps produced by the agent,
- * - `toolCalls`: any tool invocation records produced by the agent,
- * - `projectContext`: `null` or an object containing `projectName`, `filesCount`, and `tokensEstimate`.
- * On failure, returns a JSON error object `{ error, details? }`.
+ * Endpoint principal del agente
  */
 export async function POST(request: NextRequest) {
-  let agent: any = null;
+  const startTime = Date.now();
+  let ceo: any = null;
 
   try {
-    // Verificar autenticación
+    // 1. Verificar autenticación
     const user = await verifyAuth(request);
-    
     if (!user) {
-      return NextResponse.json(
-        { error: 'No autorizado. Por favor inicia sesión.' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    // Parsear body
+    // 2. Parsear body
     const body = await request.json();
     const { message, sessionId, projectId, context: editorContext } = body;
 
-    if (!message || typeof message !== 'string') {
-      return NextResponse.json(
-        { error: 'Mensaje inválido' },
-        { status: 400 }
-      );
+    if (!message) {
+      return NextResponse.json({ error: 'Mensaje inválido' }, { status: 400 });
     }
 
-    // Obtener contexto del proyecto si se proporciona
-    let projectContext = null;
-    if (projectId) {
-      projectContext = await getProjectContext(projectId, user.id);
-    }
+    logger.info('CEO Orchestrator request received', 'agent_execution', { userId: user.id });
 
-    // Crear agente con configuración MCP habilitada
-    agent = await createAgent({
-      sessionId: sessionId || user.id,
-      userId: user.id,
-      enableMCP: true
-    });
+    // 3. Inicializar el Orquestador CEO (Multi-LLM: Groq, DeepSeek, Gemini, Mistral)
+    ceo = await createCEOOrchestrator();
 
-    // Construir mensaje con contexto del proyecto y del editor
-    let enhancedMessage = "";
-
-    // 1. Añadir contexto del editor (Monaco) si existe
+    // 4. Enriquecer mensaje con contexto si existe
+    let enhancedMessage = message;
     if (editorContext) {
-      enhancedMessage += `
-CONTEXTO DEL EDITOR ACTUAL:
+      enhancedMessage = `
+CONTEXTO DEL EDITOR:
 Lenguaje: ${editorContext.language}
-Líneas: ${editorContext.lineCount}
-${editorContext.selectedCode ? `CÓDIGO SELECCIONADO:\n\`\`\`${editorContext.language}\n${editorContext.selectedCode}\n\`\`\`\n(Solo modifica esta parte si el usuario lo pide)\n` : ''}
-CÓDIGO COMPLETO:
+Código:
 \`\`\`${editorContext.language}
 ${editorContext.code}
 \`\`\`
-`;
-    }
-    
-    // 2. Añadir contexto del proyecto desde Supabase si existe
-    if (projectContext?.context) {
-      enhancedMessage += `
-CONTEXTO GLOBAL DEL PROYECTO:
-Proyecto: ${projectContext.project.name}
-Descripción: ${projectContext.project.description || 'Sin descripción'}
-Archivos: ${projectContext.context.files_count}
 
-ÍNDICE SEMÁNTICO:
-${JSON.stringify(projectContext.context.semantic_index, null, 2)}
-
-CONTEXTO COMPRIMIDO RELEVANTE:
-${projectContext.context.compressed_context.substring(0, 1500)}...
-`;
+SOLICITUD DEL USUARIO:
+${message}`;
     }
 
-    // 3. Añadir instrucciones de formato
-    enhancedMessage += `
-REGLAS DEL ASISTENTE:
-- Eres un asistente de código experto.
-- Cuando generes código, usa bloques markdown: \`\`\`lenguaje
-- Si el usuario pide "modificar", "arreglar" o "cambiar", devuelve el bloque de código corregido.
-- Si el usuario pide "explicar", prioriza la explicación sobre el código.
+    // 5. Procesar la solicitud con el sistema multi-agente
+    const result = await ceo.processRequest({
+      userMessage: enhancedMessage,
+      sessionId: sessionId || user.id,
+      context: projectId ? `project:${projectId}` : 'general'
+    });
 
-MENSAJE DEL USUARIO:
-${message}
-`;
+    const duration = Date.now() - startTime;
 
-    // Procesar mensaje
-    const result = await agent.processMessage(enhancedMessage);
+    // 6. Persistir en Supabase para historial
+    try {
+      await supabase.from('messages').insert([
+        { session_id: sessionId || user.id, role: 'user', content: message, user_id: user.id },
+        { 
+          session_id: sessionId || user.id, 
+          role: 'assistant', 
+          content: result.response, 
+          user_id: user.id,
+          metadata: {
+            delegatedTasks: result.delegatedTasks,
+            executionTime: result.totalExecutionTime,
+            multiLLM: true
+          }
+        }
+      ]);
+    } catch (dbError) {
+      logger.error('Error persisting messages', dbError as Error, 'database');
+    }
 
-    // Retornar respuesta
+    // 7. Retornar respuesta
     return NextResponse.json({
+      success: result.success,
       response: result.response,
-      steps: result.steps,
-      toolCalls: result.toolCalls,
-      projectContext: projectContext ? {
-        projectName: projectContext.project.name,
-        filesCount: projectContext.context?.files_count || 0,
-        tokensEstimate: projectContext.context?.token_estimate || 0
-      } : null
+      delegatedTasks: result.delegatedTasks,
+      metadata: {
+        duration,
+        totalExecutionTime: result.totalExecutionTime,
+        timestamp: new Date().toISOString(),
+      }
     });
 
   } catch (error: any) {
-    console.error('Error in agent endpoint:', error);
-    
+    logger.error('CEO Orchestrator execution failed', error as Error, 'agent_execution');
     return NextResponse.json(
-      { 
-        error: 'Error al procesar la solicitud',
-        details: error.message 
-      },
+      { success: false, error: error.message || 'Error interno' },
       { status: 500 }
     );
   } finally {
-    // IMPORTANTE: Limpiar recursos del agente (especialmente procesos MCP)
-    if (agent && typeof agent.cleanup === 'function') {
-      try {
-        await agent.cleanup();
-      } catch (cleanupError) {
-        console.error('Error in agent cleanup:', cleanupError);
-      }
-    }
+    if (ceo) await ceo.cleanup();
   }
 }
 
-/**
- * Endpoint para streaming (opcional)
- * GET /api/agent/stream
- */
-export async function GET(request: NextRequest) {
-  return NextResponse.json(
-    { error: 'Método no soportado. Use POST.' },
-    { status: 405 }
-  );
-}
+export const runtime = 'nodejs';
+export const maxDuration = 60;

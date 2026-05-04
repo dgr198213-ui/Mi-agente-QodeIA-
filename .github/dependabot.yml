@@ -1,0 +1,65 @@
+# Dependabot configuration for QodeIA Ecosystem
+# More info: https://docs.github.com/en/code-security/dependabot
+
+version: 2
+updates:
+  # Enable npm dependency updates
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    groups:
+      # Group Vercel AI SDK updates
+      vercel-ai:
+        patterns:
+          - "@vercel/ai*"
+          - "ai"
+      # Group Supabase updates
+      supabase:
+        patterns:
+          - "@supabase/*"
+      # Group Next.js ecosystem
+      nextjs:
+        patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+      # Group UI dependencies
+      ui:
+        patterns:
+          - "@radix-ui/*"
+          - "lucide-react"
+          - "tailwindcss"
+    labels:
+      - "dependencies"
+      - "automerge"
+
+  # Enable GitHub Actions updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "ci"
+      - "dependencies"
+
+  # Enable Docker updates if Dockerfile exists
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "docker"
+    labels:
+      - "docker"
+      - "dependencies"

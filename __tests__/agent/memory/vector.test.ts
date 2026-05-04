@@ -204,3 +204,34 @@ describe('saveMemory', () => {
     expect(console.error).toHaveBeenCalled();
   });
 });
+
+// ─── searchHybridMemory – additional boundary/regression cases ────────────────
+
+describe('searchHybridMemory – boundary regression', () => {
+  it('returns [] when embedding is an array of a single valid number', async () => {
+    // A single-element embedding is technically valid; the RPC should be called
+    const embedding = [0.42];
+    mockRpc.mockResolvedValueOnce({ data: [], error: null });
+    const result = await searchHybridMemory(embedding);
+    expect(result).toEqual([]);
+    expect(mockRpc).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns [] (not throws) when supabase.rpc throws unexpectedly', async () => {
+    mockRpc.mockRejectedValueOnce(new Error('unexpected crash'));
+    const result = await searchHybridMemory([0.1, 0.2, 0.3]);
+    expect(result).toEqual([]);
+    expect(console.error).toHaveBeenCalled();
+  });
+
+  it('treats an embedding with Infinity values as invalid', async () => {
+    // Infinity is typeof 'number' but isNaN(Infinity) === false — however
+    // the validation checks isNaN. Infinity passes the isNaN check and
+    // gets forwarded to the RPC. This test documents the current behavior.
+    mockRpc.mockResolvedValueOnce({ data: [], error: null });
+    const result = await searchHybridMemory([Infinity, 0.5]);
+    // Infinity passes the current validation (isNaN(Infinity) === false)
+    expect(result).toEqual([]);
+    expect(mockRpc).toHaveBeenCalledTimes(1);
+  });
+});

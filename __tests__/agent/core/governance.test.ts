@@ -148,6 +148,38 @@ describe('recordTransition', () => {
     expect(console.error).toHaveBeenCalled();
   });
 
+  it('skips increment_transition_ctx RPC when contextName is given but context not found', async () => {
+    const nodesData = [
+      { id: 'id-a', node_key: 'from-key' },
+      { id: 'id-b', node_key: 'to-key' },
+    ];
+    setupNodeQuery(nodesData);
+
+    // Context query returns null data (context not found)
+    const ctxSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+    supabaseMock.from.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({ single: ctxSingle }),
+      }),
+    });
+
+    supabaseMock.rpc.mockResolvedValue({ error: null });
+    supabaseMock.from.mockReturnValue({ insert: vi.fn().mockResolvedValue({ error: null }) });
+
+    await recordTransition('from-key', 'to-key', { contextName: 'ghost-ctx' });
+
+    // increment_transition_ctx should NOT be called; only global should be
+    const ctxRpcCalls = supabaseMock.rpc.mock.calls.filter(
+      ([name]: [string]) => name === 'increment_transition_ctx'
+    );
+    expect(ctxRpcCalls).toHaveLength(0);
+    // Global should still be called
+    expect(supabaseMock.rpc).toHaveBeenCalledWith(
+      'increment_transition_global',
+      expect.objectContaining({ p_from_node: 'id-a', p_to_node: 'id-b' }),
+    );
+  });
+
   it('inserts an audit record with correct fields', async () => {
     const nodesData = [
       { id: 'id-a', node_key: 'from-key' },
@@ -307,6 +339,61 @@ describe('runGovernance', () => {
 
     expect(auditInsertMock).toHaveBeenCalledWith(
       expect.objectContaining({ user_id: 'user-xyz', action: 'run_governance' }),
+    );
+  });
+
+  it('upserts to agent_node_ranks (not agent_nodes) when contextName is provided', async () => {
+    computePageRankMock.mockReturnValue(new Map([['n1', 0.5]]));
+
+    let callIdx = 0;
+    const upsertRanksMock = vi.fn().mockResolvedValue({ error: null });
+
+    supabaseMock.from.mockImplementation((table: string) => {
+      callIdx++;
+      if (table === 'agent_nodes' && callIdx === 1) {
+        return {
+          select: vi.fn().mockResolvedValue({
+            data: [{ id: 'n1', rank_score: 0.1 }],
+            error: null,
+          }),
+        };
+      }
+      if (table === 'agent_contexts') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: { id: 'ctx-99' }, error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'agent_transitions_ctx') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        };
+      }
+      if (table === 'agent_governance_ctx') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: { damping_factor: 0.85 }, error: null }),
+            }),
+          }),
+          upsert: vi.fn().mockResolvedValue({ error: null }),
+        };
+      }
+      if (table === 'agent_node_ranks') {
+        return { upsert: upsertRanksMock };
+      }
+      return { insert: vi.fn().mockResolvedValue({ error: null }) };
+    });
+
+    await runGovernance({ contextName: 'my-context' });
+
+    expect(upsertRanksMock).toHaveBeenCalledWith(
+      expect.objectContaining({ node_id: 'n1', context_id: 'ctx-99', rank_score: 0.5 }),
     );
   });
 
