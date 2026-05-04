@@ -1,6 +1,6 @@
 /**
  * CEO Orchestrator - Supervisor que coordina todos los especialistas
- * Usa Groq Llama-3.3-70B para orquestación de alto nivel
+ * v4.0: Impulsado por Gemini Flash Latest para orquestación de alto nivel
  */
 
 import { generateText, CoreMessage } from 'ai';
@@ -11,6 +11,8 @@ import { createVercelSpecialist, VercelSpecialist } from '../specialists/VercelS
 import { createMCPSpecialist, MCPSpecialist } from '../specialists/MCPSpecialist';
 import { createLogicSpecialist, LogicSpecialist } from '../specialists/LogicSpecialist';
 import { createProValidator, ProValidator } from '../specialists/ProValidator';
+import { createMolbotSpecialist, MolbotSpecialist } from '../specialists/MolbotSpecialist';
+import { createNoCodeSpecialist, NoCodeSpecialist } from '../specialists/NoCodeSpecialist';
 
 export interface CEORequest {
   userMessage: string;
@@ -40,6 +42,8 @@ export interface SpecialistRegistry {
   mcp: MCPSpecialist;
   logic: LogicSpecialist;
   proValidator: ProValidator;
+  molbot: MolbotSpecialist;
+  nocode: NoCodeSpecialist;
 }
 
 export class CEOOrchestrator {
@@ -61,20 +65,22 @@ export class CEOOrchestrator {
    * Inicializar todos los especialistas
    */
   private async initializeSpecialists() {
-    console.log('\n🚀 Initializing specialist agents...\n');
+    console.log('\n🚀 Initializing specialist agents (v4.0)...\n');
 
     try {
-      const [github, supabase, vercel, mcp, logic, proValidator] = await Promise.all([
+      const [github, supabase, vercel, mcp, logic, proValidator, molbot, nocode] = await Promise.all([
         createGitHubSpecialist(),
         createSupabaseSpecialist(),
         createVercelSpecialist(),
         createMCPSpecialist(),
         createLogicSpecialist(),
-        createProValidator()
+        createProValidator(),
+        createMolbotSpecialist(),
+        createNoCodeSpecialist()
       ]);
 
-      this.specialists = { github, supabase, vercel, mcp, logic, proValidator };
-      console.log('✅ All specialists initialized successfully\n');
+      this.specialists = { github, supabase, vercel, mcp, logic, proValidator, molbot, nocode };
+      console.log('✅ All specialists initialized successfully (8 agents active)\n');
     } catch (error) {
       console.error('Error initializing specialists:', error);
       throw error;
@@ -98,7 +104,7 @@ export class CEOOrchestrator {
         content: request.userMessage
       });
 
-      // CEO analiza la solicitud y decide qué especialista usar (v3.0)
+      // CEO analiza la solicitud y decide qué especialista usar (v4.0)
       const analysisResult = await this.analyzeRequest(request.userMessage);
 
       // Ejecutar tareas delegadas
@@ -135,16 +141,16 @@ export class CEOOrchestrator {
   }
 
   /**
-   * Analizar solicitud y determinar especialistas necesarios (v3.0)
+   * Analizar solicitud y determinar especialistas necesarios (v4.0)
    */
   private async analyzeRequest(userMessage: string): Promise<SpecialistTask[]> {
     const analysisPrompt = `
-You are analyzing a user request to determine which specialist agents should handle it (v3.0).
+You are analyzing a user request to determine which specialist agents should handle it (v4.0).
 
 User request: "${userMessage}"
 
 Analyze and respond with a JSON array of tasks to delegate. Each task should have:
-- specialist: 'github' | 'supabase' | 'vercel' | 'mcp' | 'logic' | 'pro_validator'
+- specialist: 'github' | 'supabase' | 'vercel' | 'mcp' | 'logic' | 'pro_validator' | 'molbot_specialist' | 'nocode_specialist'
 - task: specific task description for that specialist
 
 Specialist selection rules:
@@ -152,13 +158,15 @@ Specialist selection rules:
 - 'supabase': Database, auth, vector search
 - 'vercel': Deployments, environment variables
 - 'mcp': Documentation, analysis, NotebookLM
-- 'logic': Logical reasoning, mathematical analysis, counting problems (Minimax M2.5)
-- 'pro_validator': Critical code validation, architecture review (DeepSeek V4 Pro)
+- 'logic': Logical reasoning, mathematical analysis, counting problems
+- 'pro_validator': Critical code validation, architecture review
+- 'molbot_specialist': Automation workflows, integrations (Make/Zapier), scripting
+- 'nocode_specialist': UI generation, React/Tailwind components, design
 
 Example response format:
 [
   { "specialist": "github", "task": "Create a new repository named 'my-app'" },
-  { "specialist": "pro_validator", "task": "Validate the code architecture" }
+  { "specialist": "nocode_specialist", "task": "Generate a landing page component for the app" }
 ]
 
 Only include specialists that are actually needed. Respond ONLY with valid JSON array.
@@ -233,6 +241,18 @@ Only include specialists that are actually needed. Respond ONLY with valid JSON 
             result = await this.specialists!.proValidator.processRequest({
               task: task.task,
               severity: 'critical'
+            });
+            break;
+
+          case 'molbot_specialist':
+            result = await this.specialists!.molbot.processRequest({
+              task: task.task
+            });
+            break;
+
+          case 'nocode_specialist':
+            result = await this.specialists!.nocode.processRequest({
+              instruction: task.task
             });
             break;
 
@@ -330,6 +350,8 @@ Provide a clear, professional response that:
       this.specialists.supabase.clearHistory();
       this.specialists.vercel.clearHistory();
       this.specialists.mcp.clearHistory();
+      this.specialists.molbot.clearHistory();
+      this.specialists.nocode.clearHistory();
     }
   }
 
@@ -343,7 +365,9 @@ Provide a clear, professional response that:
         github: !!this.specialists?.github,
         supabase: !!this.specialists?.supabase,
         vercel: !!this.specialists?.vercel,
-        mcp: !!this.specialists?.mcp
+        mcp: !!this.specialists?.mcp,
+        molbot: !!this.specialists?.molbot,
+        nocode: !!this.specialists?.nocode
       },
       conversationHistory: this.conversationHistory.length,
       delegatedTasks: this.delegatedTasks.length
@@ -362,10 +386,10 @@ Provide a clear, professional response that:
 }
 
 /**
- * Interfaz para tarea delegada (v3.0)
+ * Interfaz para tarea delegada (v4.0)
  */
 interface SpecialistTask {
-  specialist: 'github' | 'supabase' | 'vercel' | 'mcp' | 'logic' | 'pro_validator';
+  specialist: 'github' | 'supabase' | 'vercel' | 'mcp' | 'logic' | 'pro_validator' | 'molbot_specialist' | 'nocode_specialist';
   task: string;
 }
 
@@ -376,43 +400,4 @@ export async function createCEOOrchestrator(): Promise<CEOOrchestrator> {
   const ceo = new CEOOrchestrator();
   await ceo.initialize();
   return ceo;
-}
-
-/**
- * Ejemplo de uso
- */
-export async function exampleUsage() {
-  console.log('🚀 QodeIA Multi-Agent System Example\n');
-
-  const ceo = await createCEOOrchestrator();
-
-  // Ejemplo 1: Tarea simple
-  console.log('📝 Example 1: Simple GitHub task\n');
-  const response1 = await ceo.processRequest({
-    userMessage: 'Create a new GitHub repository called "qodeia-test" with a README',
-    sessionId: 'session_1'
-  });
-
-  console.log('Response:', response1.response);
-  console.log('Execution time:', response1.totalExecutionTime, 'ms\n');
-
-  // Ejemplo 2: Tarea compleja multi-especialista
-  console.log('📝 Example 2: Complex multi-specialist task\n');
-  const response2 = await ceo.processRequest({
-    userMessage: `
-      I need to:
-      1. Create a new GitHub repo for our new feature
-      2. Set up Supabase database schema for user profiles
-      3. Deploy to Vercel production
-      4. Document the API endpoints
-    `,
-    sessionId: 'session_2'
-  });
-
-  console.log('Response:', response2.response);
-  console.log('Delegated tasks:', response2.delegatedTasks.length);
-  console.log('Total execution time:', response2.totalExecutionTime, 'ms\n');
-
-  // Limpiar
-  await ceo.cleanup();
 }
